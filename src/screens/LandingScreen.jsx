@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, KeyRound, Check } from 'lucide-react';
+import { PlusCircle, KeyRound } from 'lucide-react';
+import landingHero from '../assets/landing_hero.png';
 
 export default function LandingScreen() {
   const navigate = useNavigate();
@@ -54,71 +55,46 @@ export default function LandingScreen() {
       {/* Hero Visual Card */}
       <div style={{
         position: 'relative',
-        height: '240px',
+        height: '260px',
         borderRadius: '24px',
         overflow: 'hidden',
         border: '1px solid rgba(255,255,255,0.08)',
         boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
         margin: '20px 0'
       }}>
-        {/* We can use CSS pattern matching a highway or motorcycle lights */}
+        <img 
+          src={landingHero} 
+          alt="Rydr Pack Biker" 
+          style={{ 
+            width: '100%', 
+            height: '100%', 
+            objectFit: 'cover',
+            filter: 'brightness(0.7) contrast(1.1)' 
+          }} 
+        />
+        
+        {/* Soft vignette gradient mask */}
         <div style={{
           position: 'absolute',
           inset: 0,
-          background: 'radial-gradient(circle at 30% 20%, #2e1a12 0%, #09090b 80%)'
+          background: 'linear-gradient(to top, rgba(9,9,11,0.95) 10%, rgba(9,9,11,0.2) 60%, rgba(9,9,11,0.8) 100%)'
         }} />
-        
-        {/* Animated glowing dots representing riders on a route */}
-        <div style={{
-          position: 'absolute',
-          top: '40%',
-          left: '15%',
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          background: '#F97316',
-          boxShadow: '0 0 12px #F97316'
-        }} />
-        <div style={{
-          position: 'absolute',
-          top: '55%',
-          left: '45%',
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          background: '#0EA5E9',
-          boxShadow: '0 0 12px #0EA5E9'
-        }} />
-        <div style={{
-          position: 'absolute',
-          top: '35%',
-          left: '75%',
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          background: '#10B981',
-          boxShadow: '0 0 12px #10B981'
-        }} />
-        
-        {/* Dotted path connecting the dots */}
-        <svg style={{ position: 'absolute', width: '100%', height: '100%', pointerEvents: 'none' }}>
-          <path d="M 50 100 Q 150 150 250 80 T 350 120" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="2" strokeDasharray="6,6" />
-        </svg>
 
         <div style={{
           position: 'absolute',
           bottom: '20px',
           left: '20px',
           right: '20px',
-          background: 'rgba(9,9,11,0.8)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: 'rgba(9,9,11,0.75)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: '16px',
           padding: '16px',
           boxSizing: 'border-box'
         }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#10B981', boxShadow: '0 0 8px #10B981' }} />
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'Outfit' }}>
+            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#F97316', boxShadow: '0 0 8px #F97316' }} />
             Live Cohort Tracking
           </h3>
           <p style={{ color: '#A1A1AA', fontSize: '0.78rem', lineHeight: '1.4' }}>
@@ -141,22 +117,15 @@ export default function LandingScreen() {
           Track Your Pack,<br />Never Ride Alone.
         </h2>
         
-        <button className="btn btn-primary" onClick={() => navigate('/onboarding')}>
+        <button className="btn btn-primary" onClick={() => navigate('/onboarding')} style={{ padding: '18px 24px', fontSize: '1rem', boxShadow: '0 8px 30px rgba(249, 115, 22, 0.35)' }}>
           <PlusCircle size={18} />
           Create Rider Profile
         </button>
 
-        <button className="btn btn-outline" onClick={() => navigate('/login')} style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
+        <button className="btn btn-outline" onClick={() => navigate('/login')} style={{ borderColor: 'rgba(255,255,255,0.15)', padding: '18px 24px', fontSize: '1rem', background: 'rgba(255,255,255,0.02)' }}>
           <KeyRound size={18} />
           Already registered? Log in
         </button>
-      </div>
-
-      {/* Trust & Tagline */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', fontSize: '0.75rem', color: '#52525B', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
-        <span>✓ Real-time Location</span>
-        <span>✓ No sign-up required for guests</span>
-        <span>✓ Emergency SOS</span>
       </div>
 
     </div>

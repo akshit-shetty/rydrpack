@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail, LogIn, Sparkles } from 'lucide-react';
+import { ArrowLeft, Mail, LogIn, Sparkles, Lock } from 'lucide-react';
 import Header from '../components/Header';
 import { supabase } from '../supabase';
 
 export default function LoginScreen({ onShowToast }) {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
@@ -14,6 +15,10 @@ export default function LoginScreen({ onShowToast }) {
 
     if (!email.trim()) {
       onShowToast('Please enter your registered email address', 'error');
+      return;
+    }
+    if (!password.trim()) {
+      onShowToast('Please enter your password', 'error');
       return;
     }
 
@@ -32,6 +37,13 @@ export default function LoginScreen({ onShowToast }) {
       }
 
       if (data) {
+        // Verify password
+        if (data.password && data.password !== password) {
+          onShowToast('Incorrect password. Please try again.', 'error');
+          setLoading(false);
+          return;
+        }
+
         // Reconstruct local profile cache
         const profile = {
           firstName: data.first_name,
@@ -86,11 +98,11 @@ export default function LoginScreen({ onShowToast }) {
             Welcome Back
           </h2>
           <p style={{ fontSize: '0.85rem', color: '#A1A1AA', marginTop: '6px' }}>
-            Enter your email to retrieve your profile and riding metrics.
+            Enter your email and password to retrieve your profile and riding metrics.
           </p>
         </div>
 
-        {/* Input Field */}
+        {/* Email Input Field */}
         <div className="form-field">
           <label className="field-label">Email Address</label>
           <div className="input-wrapper">
@@ -103,6 +115,23 @@ export default function LoginScreen({ onShowToast }) {
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
               autoComplete="email"
+            />
+          </div>
+        </div>
+
+        {/* Password Input Field */}
+        <div className="form-field" style={{ marginTop: '14px' }}>
+          <label className="field-label">Password</label>
+          <div className="input-wrapper">
+            <span className="input-icon"><Lock size={18} /></span>
+            <input 
+              className="field-input"
+              type="password"
+              placeholder="Enter your account password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+              autoComplete="current-password"
             />
           </div>
         </div>
@@ -122,7 +151,7 @@ export default function LoginScreen({ onShowToast }) {
           type="submit" 
           className="btn btn-primary"
           style={{ marginTop: 'auto', marginBottom: '10px' }}
-          disabled={loading || !email.trim()}
+          disabled={loading || !email.trim() || !password.trim()}
         >
           {loading ? 'Authenticating...' : 'Log In'}
           <LogIn size={16} style={{ marginLeft: '4px' }} />
