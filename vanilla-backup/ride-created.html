@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#FFFFFF" />
+  <meta name="description" content="Rydr — Ride Created" />
+  <title>Rydr — Ride Created</title>
+  <link rel="icon" href="assets/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- QR Code library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+
+<body>
+  <div class="page">
+
+    <!-- Nav Bar -->
+    <nav class="nav-bar">
+      <button class="nav-back" id="backBtn" aria-label="Go back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" />
+        </svg>
+      </button>
+      <span class="nav-title">Ride Created</span>
+      <span class="nav-spacer"></span>
+    </nav>
+
+    <!-- Success Hero -->
+    <div class="created-success">
+      <div class="success-icon">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+          <path d="M20 6L9 17l-5-5" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round"
+            stroke-linejoin="round" />
+        </svg>
+      </div>
+      <h2>Your ride is ready!</h2>
+      <p>Share the link or QR code with your friends to invite them.</p>
+    </div>
+
+    <!-- Ride ID & Link Card -->
+    <div class="info-card">
+      <!-- Ride ID -->
+      <div class="info-row">
+        <div>
+          <div class="info-label">Ride ID</div>
+          <div class="info-value" id="rideIdDisplay">—</div>
+        </div>
+        <button class="copy-btn" id="copyIdBtn" title="Copy Ride ID">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+            <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.8" />
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="1.8" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Invite Link -->
+      <div class="info-row">
+        <div style="flex:1; min-width:0">
+          <div class="info-label">Invite Link</div>
+          <div class="info-value" id="inviteLinkDisplay"
+            style="font-size:0.8rem; color:#6B7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">—
+          </div>
+        </div>
+        <button class="copy-btn" id="copyLinkBtn" title="Copy Link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+            <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.8" />
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="1.8" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- QR Code -->
+      <div class="qr-wrap" style="padding: 10px 20px;">
+        <div id="qrcode" style="display: flex; justify-content: center;"></div>
+      </div>
+
+      <!-- Share Row (Replaces Riders Joined badge) -->
+      <div class="share-row" style="padding: 12px 18px; border-top: 1px solid var(--border);">
+        <button id="shareInviteBtn" class="btn btn-black" style="padding: 12px; font-size: 0.9rem; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+          </svg>
+          Share Invite
+        </button>
+      </div>
+    </div>
+
+    <!-- View Ride Dashboard -->
+    <button class="view-dashboard-link" id="viewDashboardBtn">
+      View Ride Dashboard
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <path d="M5 12h14M13 6l6 6-6 6" stroke="#0D0D0D" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" />
+      </svg>
+    </button>
+
+  </div><!-- /.page -->
+
+  <!-- Share Modal Sheet -->
+  <div class="overlay-backdrop" id="shareBackdrop" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.45); z-index:900; backdrop-filter:blur(3px);"></div>
+  <div class="share-modal" id="shareModal" style="display:none; position:fixed; bottom:0; left:50%; transform:translateX(-50%) translateY(100%); width:100%; max-width:430px; background:white; border-radius:20px 20px 0 0; z-index:1000; padding:24px 20px; box-sizing:border-box; transition:transform 0.28s cubic-bezier(0.16, 1, 0.3, 1); box-shadow:0 -8px 32px rgba(0,0,0,0.15);">
+    <div style="width:40px; height:4px; background:#E8E8E8; border-radius:2px; margin:0 auto 20px;"></div>
+    <h3 style="font-size:1.05rem; font-weight:700; margin-bottom:18px; text-align:center; color:#0D0D0D; font-family:'Inter', sans-serif;">Share Ride Invite</h3>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <a id="shareWhatsapp" href="#" target="_blank" class="btn" style="background:#22C55E; color:white; border:none; display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none; padding:12px; font-weight:600; border-radius:10px; font-family:'Inter', sans-serif; font-size:0.9rem;">
+        💬 Share via WhatsApp
+      </a>
+      <a id="shareTelegram" href="#" target="_blank" class="btn" style="background:#0EA5E9; color:white; border:none; display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none; padding:12px; font-weight:600; border-radius:10px; font-family:'Inter', sans-serif; font-size:0.9rem;">
+        ✈️ Share via Telegram
+      </a>
+      <button id="copyShareBtn" class="btn" style="background:#F7F7F7; color:#0D0D0D; border:1px solid #E8E8E8; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; font-weight:600; border-radius:10px; cursor:pointer; font-family:'Inter', sans-serif; font-size:0.9rem;">
+        🔗 Copy Invite Link
+      </button>
+      <button id="shareNative" class="btn" style="background:#0D0D0D; color:white; border:none; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; font-weight:600; border-radius:10px; cursor:pointer; font-family:'Inter', sans-serif; font-size:0.9rem;">
+        📱 System Share Sheet
+      </button>
+    </div>
+    <button id="closeShareBtn" style="margin-top:16px; width:100%; background:none; border:none; font-family:'Inter', sans-serif; font-size:0.85rem; font-weight:600; color:#6B7280; padding:10px; cursor:pointer;">Cancel</button>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { firebaseConfig } from "./js/firebase-config.js";
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    function showToast(msg, type = '') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (type ? ' ' + type : '');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    // Get ride ID from URL (with fallback to sessionStorage in case of query param drops)
+    const params = new URLSearchParams(window.location.search);
+    const rideId = params.get('rideId') || sessionStorage.getItem('rydr_last_created_ride_id');
+    console.log("ride-created.html loaded. rideId:", rideId);
+
+    if (!rideId) {
+      window.location.href = 'index.html';
+    }
+
+    // Display Ride ID
+    document.getElementById('rideIdDisplay').textContent = rideId;
+
+    // Build invite link
+    const inviteLink = `${location.origin}${location.pathname.replace('ride-created.html', 'join-ride.html')}?rideId=${encodeURIComponent(rideId)}`;
+    document.getElementById('inviteLinkDisplay').textContent = inviteLink;
+
+    // Generate QR Code
+    new QRCode(document.getElementById('qrcode'), {
+      text: inviteLink,
+      width: 130,
+      height: 130,
+      colorDark: '#0D0D0D',
+      colorLight: '#FFFFFF',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+
+    // Copy buttons
+    document.getElementById('copyIdBtn').addEventListener('click', () => {
+      navigator.clipboard.writeText(rideId).then(() => showToast('Ride ID copied!', 'success'));
+    });
+    document.getElementById('copyLinkBtn').addEventListener('click', () => {
+      navigator.clipboard.writeText(inviteLink).then(() => showToast('Link copied!', 'success'));
+    });
+
+    // Back button
+    document.getElementById('backBtn').addEventListener('click', () => {
+      window.location.href = 'create-ride.html';
+    });
+
+    // Share sheet overlay handlers
+    const shareBtn = document.getElementById('shareInviteBtn');
+    const shareBackdrop = document.getElementById('shareBackdrop');
+    const shareModal = document.getElementById('shareModal');
+    const closeShareBtn = document.getElementById('closeShareBtn');
+
+    function openShareModal() {
+      shareBackdrop.style.display = 'block';
+      shareModal.style.display = 'block';
+      setTimeout(() => {
+        shareModal.style.transform = 'translateX(-50%) translateY(0)';
+      }, 10);
+    }
+
+    function closeShareModal() {
+      shareModal.style.transform = 'translateX(-50%) translateY(100%)';
+      setTimeout(() => {
+        shareBackdrop.style.display = 'none';
+        shareModal.style.display = 'none';
+      }, 300);
+    }
+
+    shareBtn.addEventListener('click', openShareModal);
+    closeShareBtn.addEventListener('click', closeShareModal);
+    shareBackdrop.addEventListener('click', closeShareModal);
+
+    // Setup sharing destinations
+    document.getElementById('shareWhatsapp').addEventListener('click', () => {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent('Join my Rydr ride! 🏍️\n' + inviteLink)}`);
+      closeShareModal();
+    });
+
+    document.getElementById('shareTelegram').addEventListener('click', () => {
+      window.open(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join my Rydr ride! 🏍️')}`);
+      closeShareModal();
+    });
+
+    document.getElementById('copyShareBtn').addEventListener('click', () => {
+      navigator.clipboard.writeText(inviteLink).then(() => {
+        showToast('Link copied!', 'success');
+        closeShareModal();
+      });
+    });
+
+    document.getElementById('shareNative').addEventListener('click', async () => {
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'Join my Rydr ride!',
+            text: 'Track our ride in real time.',
+            url: inviteLink
+          });
+          closeShareModal();
+        } catch (e) {
+          console.warn('Native share error:', e);
+        }
+      } else {
+        navigator.clipboard.writeText(inviteLink).then(() => {
+          showToast('Link copied to clipboard!', 'success');
+          closeShareModal();
+        });
+      }
+    });
+
+    // View Dashboard
+    document.getElementById('viewDashboardBtn').addEventListener('click', () => {
+      const session = JSON.parse(sessionStorage.getItem('rydr_session') || localStorage.getItem('rydr_rider') || '{}');
+      if (session && session.riderId) {
+        function unicodeToUrlBase64(str) {
+          const bytes = new TextEncoder().encode(str);
+          let binary = '';
+          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+          return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+        window.location.href = `ride.html?s=${unicodeToUrlBase64(JSON.stringify(session))}`;
+      } else {
+        window.location.href = `ride.html?rideId=${encodeURIComponent(rideId)}`;
+      }
+    });
+  </script>
+</body>
+
+</html>

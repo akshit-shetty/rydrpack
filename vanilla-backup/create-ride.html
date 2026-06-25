@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#FFFFFF" />
+  <meta name="description" content="Rydr — Create a new ride" />
+  <title>Rydr — Create Ride</title>
+  <link rel="icon" href="assets/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+  <div class="page">
+
+    <!-- Nav Bar -->
+    <nav class="nav-bar">
+      <button class="nav-back" id="backBtn" aria-label="Go back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" />
+        </svg>
+      </button>
+      <span class="nav-title">Create Ride</span>
+      <span class="nav-spacer"></span>
+    </nav>
+
+    <!-- Form Body -->
+    <div class="form-body">
+
+      <!-- Ride Name -->
+      <div class="form-field">
+        <div class="field-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#ABABAB" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <div class="field-inner">
+          <label class="field-label" for="rideName">Ride Name</label>
+          <input class="field-input" type="text" id="rideName" placeholder="e.g. Weekend Lonavala Ride" maxlength="50"
+            autocomplete="off" />
+        </div>
+      </div>
+
+      <!-- Start Location (Hidden - using default current location) -->
+      <div class="form-field" style="position:relative; display:none !important;">
+        <div class="field-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="10" r="3" stroke="#ABABAB" stroke-width="1.8" />
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="#ABABAB"
+              stroke-width="1.8" />
+          </svg>
+        </div>
+        <div class="field-inner" style="position:relative">
+          <label class="field-label" for="startInput">Start Location</label>
+
+          <!-- GPS / Manual toggle -->
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <button type="button" id="useGpsBtn" style="
+              flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
+              font-family:'Inter',sans-serif; font-size:0.82rem; font-weight:600;
+              padding:9px 12px; border-radius:8px; border:1.5px solid #0D0D0D;
+              background:#0D0D0D; color:white; cursor:pointer; transition:all 0.15s;
+            ">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="3" fill="white" />
+                <path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="white" stroke-width="2" stroke-linecap="round" />
+                <circle cx="12" cy="12" r="7" stroke="white" stroke-width="1.5" />
+              </svg>
+              Use Current Location
+            </button>
+            <button type="button" id="useManualBtn" style="
+              flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
+              font-family:'Inter',sans-serif; font-size:0.82rem; font-weight:600;
+              padding:9px 12px; border-radius:8px; border:1.5px solid #E8E8E8;
+              background:#F7F7F7; color:#6B7280; cursor:pointer; transition:all 0.15s;
+            ">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
+                <path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+              Search Manually
+            </button>
+          </div>
+
+          <!-- GPS status badge -->
+          <div id="gpsStatusBadge" style="
+            display:none; align-items:center; gap:8px;
+            background:#F0FDF4; border:1px solid #86EFAC;
+            border-radius:8px; padding:10px 14px;
+            font-size:0.82rem; font-weight:500; color:#16a34a;
+            margin-bottom:4px;
+          ">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="3" fill="#16a34a" />
+              <circle cx="12" cy="12" r="7" stroke="#16a34a" stroke-width="1.5" />
+              <path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="#16a34a" stroke-width="2" stroke-linecap="round" />
+            </svg>
+            <span id="gpsStatusText">Fetching location…</span>
+            <button type="button" id="clearGpsBtn" style="
+              margin-left:auto; background:none; border:none; cursor:pointer;
+              color:#6B7280; font-size:0.8rem; padding:0;
+            ">✕ Change</button>
+          </div>
+
+          <!-- Manual search (hidden by default) -->
+          <div id="startManualWrap" style="display:none">
+            <input class="field-input" type="text" id="startInput" placeholder="e.g. Mumbai, Maharashtra"
+              autocomplete="off" />
+            <div class="dest-suggestions" id="startSuggestions"></div>
+          </div>
+
+          <input type="hidden" id="startLat" />
+          <input type="hidden" id="startLng" />
+          <input type="hidden" id="startName" />
+          <div class="dest-selected-badge" id="startSelectedBadge">
+            ✓ <span id="startSelectedText"></span>
+            <button class="dest-clear-btn" id="startClearBtn">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Destination -->
+      <div class="form-field" style="position:relative">
+        <div class="field-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M3 12h18M3 6h12M3 18h12" stroke="#ABABAB" stroke-width="1.8" stroke-linecap="round" />
+            <circle cx="19" cy="6" r="2" fill="#0D0D0D" />
+            <circle cx="19" cy="18" r="2" fill="#0D0D0D" />
+          </svg>
+        </div>
+        <div class="field-inner" style="position:relative">
+          <label class="field-label" for="destInput">Destination</label>
+          <input class="field-input" type="text" id="destInput" placeholder="Where are you riding to?"
+            autocomplete="off" />
+          <div class="dest-suggestions" id="destSuggestions"></div>
+          <input type="hidden" id="destLat" />
+          <input type="hidden" id="destLng" />
+          <input type="hidden" id="destName" />
+          <div class="dest-selected-badge" id="destSelectedBadge">
+            ✓ <span id="destSelectedText"></span>
+            <button class="dest-clear-btn" id="destClearBtn">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ride Date -->
+      <div class="form-field">
+        <div class="field-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="4" width="18" height="18" rx="2" stroke="#ABABAB" stroke-width="1.8" />
+            <path d="M16 2v4M8 2v4M3 10h18" stroke="#ABABAB" stroke-width="1.8" stroke-linecap="round" />
+          </svg>
+        </div>
+        <div class="field-inner">
+          <label class="field-label" for="rideDate">Ride Date</label>
+          <input class="field-input" type="date" id="rideDate" />
+        </div>
+      </div>
+
+      <!-- Ride Type (Solo/Group) -->
+      <div class="form-field">
+        <div class="field-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#ABABAB" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="9" cy="7" r="4" stroke="#ABABAB" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="#ABABAB" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="#ABABAB" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="field-inner">
+          <label class="field-label">Ride Type</label>
+          <div class="ride-type-selector" style="display:flex; gap:12px; margin-top:8px;">
+            <label id="typeSoloBtn" class="type-option active" style="
+              flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
+              padding:12px; border:1.5px solid #0D0D0D; border-radius:10px; cursor:pointer;
+              font-size:0.85rem; font-weight:600; text-align:center; transition: all 0.15s ease;
+            ">
+              <input type="radio" name="rideType" value="solo" checked style="display:none;" />
+              🏍️ Solo Ride
+            </label>
+            <label id="typeGroupBtn" class="type-option" style="
+              flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
+              padding:12px; border:1.5px solid #E8E8E8; border-radius:10px; cursor:pointer;
+              font-size:0.85rem; font-weight:600; text-align:center; color:#6B7280; transition: all 0.15s ease;
+            ">
+              <input type="radio" name="rideType" value="group" style="display:none;" />
+              👥 Group Ride
+            </label>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.form-body -->
+
+    <!-- Sticky CTA -->
+    <div class="sticky-cta">
+      <button class="btn btn-black" id="createBtn">
+        Create Ride
+      </button>
+    </div>
+
+  </div><!-- /.page -->
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Firebase + Logic -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { firebaseConfig } from "./js/firebase-config.js";
+    import { MAPTILER_KEY } from "./js/maplibre-config.js";
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // ===== UTILS =====
+    function showToast(msg, type = '') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (type ? ' ' + type : '');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    function generateRideId() {
+      const now = new Date();
+      const yy = String(now.getFullYear()).slice(2);
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const seq = String(Math.floor(Math.random() * 900) + 100);
+      return `RF-${yy}${mm}${dd}-${seq}`;
+    }
+
+    function generateUserId() {
+      return Math.random().toString(36).slice(2) + Date.now().toString(36);
+    }
+
+    function unicodeToUrlBase64(str) {
+      const bytes = new TextEncoder().encode(str);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    // ===== BACK BUTTON =====
+    document.getElementById('backBtn').addEventListener('click', () => history.back() || (window.location.href = 'index.html'));
+
+    // ===== SET DEFAULT DATE =====
+    const today = new Date();
+    const dateEl = document.getElementById('rideDate');
+    dateEl.value = today.toISOString().split('T')[0];
+
+    // ===== GPS START LOCATION =====
+    let gpsStartSelected = null; // { name, lat, lng } when GPS is used
+
+    // Silent background GPS fetch on page load
+    function fetchCurrentLocation() {
+      if (!('geolocation' in navigator)) return;
+      navigator.geolocation.getCurrentPosition(
+        async pos => {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          try {
+            const url = `https://api.maptiler.com/geocoding/${lng},${lat}.json?key=${MAPTILER_KEY}&language=en`;
+            const res = await fetch(url);
+            const data = await res.json();
+            const placeName = data.features?.[0]?.place_name?.split(',').slice(0, 2).join(', ') || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+            gpsStartSelected = { name: placeName, lat, lng };
+            document.getElementById('startLat').value = lat;
+            document.getElementById('startLng').value = lng;
+            document.getElementById('startName').value = placeName;
+          } catch {
+            gpsStartSelected = { name: `${lat.toFixed(4)}, ${lng.toFixed(4)}`, lat, lng };
+            document.getElementById('startLat').value = lat;
+            document.getElementById('startLng').value = lng;
+            document.getElementById('startName').value = gpsStartSelected.name;
+          }
+        },
+        err => {
+          console.warn('GPS location fetch failed:', err);
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    }
+    
+    // Trigger on load
+    fetchCurrentLocation();
+
+    // ===== RIDE TYPE SELECTOR =====
+    let selectedRideType = 'solo';
+    const typeSoloBtn = document.getElementById('typeSoloBtn');
+    const typeGroupBtn = document.getElementById('typeGroupBtn');
+
+    typeSoloBtn.addEventListener('click', () => {
+      selectedRideType = 'solo';
+      typeSoloBtn.classList.add('active');
+      typeSoloBtn.style.borderColor = '#0D0D0D';
+      typeSoloBtn.style.color = '#0D0D0D';
+      
+      typeGroupBtn.classList.remove('active');
+      typeGroupBtn.style.borderColor = '#E8E8E8';
+      typeGroupBtn.style.color = '#6B7280';
+    });
+
+    typeGroupBtn.addEventListener('click', () => {
+      selectedRideType = 'group';
+      typeGroupBtn.classList.add('active');
+      typeGroupBtn.style.borderColor = '#0D0D0D';
+      typeGroupBtn.style.color = '#0D0D0D';
+      
+      typeSoloBtn.classList.remove('active');
+      typeSoloBtn.style.borderColor = '#E8E8E8';
+      typeSoloBtn.style.color = '#6B7280';
+    });
+
+    // ===== GEOCODER HELPER =====
+    // Dual-source: Photon (Komoot) + MapTiler for maximum India address coverage.
+    // Photon has excellent building/POI autocomplete, biased to user's GPS location.
+    let userLatBias = null, userLngBias = null;
+    navigator.geolocation?.getCurrentPosition(p => {
+      userLatBias = p.coords.latitude;
+      userLngBias = p.coords.longitude;
+    }, () => {}, { enableHighAccuracy: false, timeout: 5000 });
+
+    // Format a Photon feature into { name, detail, lat, lng }
+    function formatPhoton(f) {
+      const p = f.properties;
+      // Primary name: name → street → locality
+      const primary = [
+        p.name,
+        p.housenumber ? `${p.street || ''} ${p.housenumber}`.trim() : null,
+        !p.name && p.street ? p.street : null,
+      ].filter(Boolean)[0] || p.locality || p.city || '';
+
+      // Detail line: suburb / city / state / country
+      const detail = [
+        p.suburb || p.neighbourhood || p.district,
+        p.city || p.town || p.village || p.county,
+        p.state,
+        p.country,
+      ].filter(Boolean).join(', ');
+
+      return {
+        name: primary,
+        detail,
+        lat: f.geometry.coordinates[1],
+        lng: f.geometry.coordinates[0],
+      };
+    }
+
+    // Format a MapTiler feature into { name, detail, lat, lng }
+    function formatMapTiler(f) {
+      const parts = (f.place_name || '').split(',').map(s => s.trim());
+      return {
+        name: parts[0] || '',
+        detail: parts.slice(1, 4).join(', '),
+        lat: f.center[1],
+        lng: f.center[0],
+      };
+    }
+
+    function makeGeocoder(inputId, suggId, latId, lngId, nameId, badgeId, textId, clearId) {
+      const input = document.getElementById(inputId);
+      const sugg = document.getElementById(suggId);
+      const latEl = document.getElementById(latId);
+      const lngEl = document.getElementById(lngId);
+      const nameEl = document.getElementById(nameId);
+      const badge = document.getElementById(badgeId);
+      const text = document.getElementById(textId);
+      const clearBtn = document.getElementById(clearId);
+      let selected = null;
+      let timer = null;
+      let abortCtrl = null;
+
+      function close() { sugg.classList.remove('open'); sugg.innerHTML = ''; }
+      function clear() {
+        selected = null;
+        [latEl, lngEl, nameEl].forEach(e => e.value = '');
+        input.value = '';
+        badge.classList.remove('visible');
+        text.textContent = '';
+        close();
+      }
+
+      function select(item) {
+        selected = item;
+        latEl.value = item.lat;
+        lngEl.value = item.lng;
+        // Full display: name + first part of detail
+        const displayName = item.detail
+          ? `${item.name}, ${item.detail.split(',')[0].trim()}`
+          : item.name;
+        nameEl.value = displayName;
+        input.value = displayName;
+        text.textContent = displayName;
+        badge.classList.add('visible');
+        close();
+      }
+
+      async function search(q) {
+        if (abortCtrl) abortCtrl.abort();
+        abortCtrl = new AbortController();
+        const { signal } = abortCtrl;
+
+        sugg.innerHTML = `<div class="dest-loading">🔍 Searching…</div>`;
+        sugg.classList.add('open');
+
+        try {
+          // --- Build URLs ---
+          const biasParams = userLatBias !== null
+            ? `&lat=${userLatBias}&lon=${userLngBias}`
+            : '';
+
+          const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=7&lang=en${biasParams}`;
+          const mapTilerUrl = `https://api.maptiler.com/geocoding/${encodeURIComponent(q)}.json?key=${MAPTILER_KEY}&language=en&limit=5${userLatBias !== null ? `&proximity=${userLngBias},${userLatBias}` : ''}`;
+
+          // Fetch both in parallel, use whichever succeeds
+          const [photonRes, mapTilerRes] = await Promise.allSettled([
+            fetch(photonUrl, { signal }),
+            fetch(mapTilerUrl, { signal }),
+          ]);
+
+          let results = [];
+
+          // Parse Photon results
+          if (photonRes.status === 'fulfilled' && photonRes.value.ok) {
+            const d = await photonRes.value.json();
+            if (d.features?.length) {
+              results = d.features.map(f => ({ src: 'photon', ...formatPhoton(f) }));
+            }
+          }
+
+          // Parse MapTiler results — merge in any that Photon didn't catch
+          if (mapTilerRes.status === 'fulfilled' && mapTilerRes.value.ok) {
+            const d = await mapTilerRes.value.json();
+            if (d.features?.length) {
+              const mtResults = d.features.map(f => ({ src: 'maptiler', ...formatMapTiler(f) }));
+              // Deduplicate: skip if a result with same name already exists from Photon
+              for (const r of mtResults) {
+                const duplicate = results.some(
+                  ex => ex.name.toLowerCase() === r.name.toLowerCase() ||
+                  (Math.abs(ex.lat - r.lat) < 0.001 && Math.abs(ex.lng - r.lng) < 0.001)
+                );
+                if (!duplicate) results.push(r);
+              }
+            }
+          }
+
+          results = results.slice(0, 8); // cap at 8
+
+          if (!results.length) {
+            sugg.innerHTML = `<div class="dest-loading">No results. Try a landmark, area name, or pin code.</div>`;
+            return;
+          }
+
+          sugg.innerHTML = results.map((r, i) => {
+            // Pick icon by type
+            const icon = r.src === 'photon' ? '📍' : '🗺️';
+            return `<div class="dest-suggestion-item" data-i="${i}" style="align-items:flex-start; gap:10px; padding:12px 14px;">
+              <span style="font-size:1rem; flex-shrink:0; margin-top:1px;">${icon}</span>
+              <div style="min-width:0; flex:1; overflow:hidden;">
+                <div class="dest-suggestion-name" style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${r.name || '—'}</div>
+                ${r.detail ? `<div class="dest-suggestion-detail" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#6B7280; font-size:0.78rem; margin-top:2px;">${r.detail}</div>` : ''}
+              </div>
+            </div>`;
+          }).join('');
+
+          sugg.querySelectorAll('.dest-suggestion-item').forEach(el => {
+            el.addEventListener('click', () => {
+              select(results[parseInt(el.dataset.i)]);
+            });
+          });
+
+        } catch (e) {
+          if (e.name !== 'AbortError') {
+            sugg.innerHTML = `<div class="dest-loading">Search failed. Check connection.</div>`;
+          }
+        }
+      }
+
+      input.addEventListener('input', () => {
+        const q = input.value.trim();
+        if (selected && input.value === selected.name) return;
+        selected = null;
+        [latEl, lngEl, nameEl].forEach(e => e.value = '');
+        badge.classList.remove('visible');
+        clearTimeout(timer);
+        if (q.length < 2) { close(); return; }
+        timer = setTimeout(() => search(q), 350);
+      });
+      input.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+      clearBtn.addEventListener('click', clear);
+      document.addEventListener('click', e => {
+        if (!input.contains(e.target) && !sugg.contains(e.target)) close();
+      });
+
+      return () => selected;
+    }
+
+
+
+    const getDest = makeGeocoder('destInput', 'destSuggestions', 'destLat', 'destLng', 'destName', 'destSelectedBadge', 'destSelectedText', 'destClearBtn');
+
+    // ===== CREATE RIDE =====
+    document.getElementById('createBtn').addEventListener('click', async () => {
+      const rideName = document.getElementById('rideName').value.trim();
+      const rideDate = document.getElementById('rideDate').value;
+      const dest = getDest();
+
+      if (!rideName) { showToast('Please enter a ride name', 'error'); document.getElementById('rideName').focus(); return; }
+      if (!dest) { showToast('Please select a destination', 'error'); document.getElementById('destInput').focus(); return; }
+
+      const btn = document.getElementById('createBtn');
+      btn.disabled = true;
+      btn.textContent = 'Creating…';
+
+      // Ensure start location coordinates (fallback to GPS query if not loaded yet)
+      let start = gpsStartSelected;
+      if (!start) {
+        btn.textContent = 'Getting Location…';
+        try {
+          const pos = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 5000 });
+          });
+          const { latitude: lat, longitude: lng } = pos.coords;
+          start = { name: `${lat.toFixed(4)}, ${lng.toFixed(4)}`, lat, lng };
+        } catch (e) {
+          console.warn('GPS location fetch failed, using fallback starting location:', e);
+          showToast('GPS failed — using default start location (Mumbai)', 'warning');
+          start = { name: 'Default Start (Mumbai)', lat: 19.0760, lng: 72.8777 };
+        }
+      }
+
+      try {
+        const rideId = generateRideId();
+        const riderId = generateUserId();
+
+        await setDoc(doc(db, 'rides', rideId), {
+          title: rideName,
+          createdAt: serverTimestamp(),
+          active: true,
+          createdBy: riderId,
+          rideDate: rideDate || null,
+          startLocationName: start ? start.name : null,
+          startLat: start ? start.lat : null,
+          startLng: start ? start.lng : null,
+          destinationName: dest.name,
+          destinationLat: dest.lat,
+          destinationLng: dest.lng,
+          rideType: selectedRideType
+        });
+
+        // Use Rider Profile Name from localStorage
+        const profileStr = localStorage.getItem('rydr_rider_profile');
+        const profile = profileStr ? JSON.parse(profileStr) : null;
+        const hostName = profile ? `${profile.firstName} ${profile.lastName}` : 'You';
+        const hostEmail = profile ? profile.email : null;
+        const hostContact = profile ? profile.contact : null;
+        const hostBlood = profile ? profile.bloodGroup : null;
+
+        const session = {
+          riderId, rideId,
+          name: hostName,
+          email: hostEmail,
+          contact: hostContact,
+          bloodGroup: hostBlood,
+          color: '#0D0D0D',
+          isHost: true,
+          rideTitle: rideName,
+          rideDate,
+          startLocation: start ? start.name : null,
+          startLocationCoords: start ? { lat: start.lat, lng: start.lng } : null,
+          destination: { name: dest.name, lat: dest.lat, lng: dest.lng }
+        };
+        sessionStorage.setItem('rydr_session', JSON.stringify(session));
+        localStorage.setItem('rydr_rider', JSON.stringify(session));
+        sessionStorage.setItem('rydr_last_created_ride_id', rideId);
+
+        window.location.href = `ride-created.html?rideId=${encodeURIComponent(rideId)}`;
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to create ride. Check Firebase config.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Create Ride';
+      }
+    });
+  </script>
+</body>
+
+</html>
