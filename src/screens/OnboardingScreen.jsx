@@ -84,6 +84,90 @@ export default function OnboardingScreen({ onShowToast }) {
     return true;
   };
 
+  const handleStepNavigation = async (targetStep) => {
+    if (targetStep === step) return;
+    
+    if (targetStep === 1) {
+      setStep(1);
+      return;
+    }
+
+    if (targetStep === 2) {
+      if (!validateStep(1)) return;
+
+      setLoading(true);
+      try {
+        const existingRiderId = localStorage.getItem('rydr_rider_id');
+        const { data, error } = await supabase
+          .from('riders')
+          .select('rider_id')
+          .eq('email', email.trim().toLowerCase())
+          .maybeSingle();
+
+        if (error) console.warn(error.message);
+
+        if (data && data.rider_id !== existingRiderId) {
+          onShowToast('This email is already registered to another account. Please log in instead.', 'error');
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.warn(err);
+      } finally {
+        setLoading(false);
+      }
+      
+      setStep(2);
+      return;
+    }
+
+    if (targetStep === 3) {
+      // First validate Step 1
+      if (!validateStep(1)) return;
+
+      setLoading(true);
+      try {
+        const existingRiderId = localStorage.getItem('rydr_rider_id');
+        const { data: emailData } = await supabase
+          .from('riders')
+          .select('rider_id')
+          .eq('email', email.trim().toLowerCase())
+          .maybeSingle();
+
+        if (emailData && emailData.rider_id !== existingRiderId) {
+          onShowToast('This email is already registered to another account. Please log in instead.', 'error');
+          setLoading(false);
+          return;
+        }
+
+        // Validate Step 2
+        if (!validateStep(2)) {
+          setLoading(false);
+          return;
+        }
+
+        const { data: contactData } = await supabase
+          .from('riders')
+          .select('rider_id')
+          .eq('contact', contact.trim())
+          .maybeSingle();
+
+        if (contactData && contactData.rider_id !== existingRiderId) {
+          onShowToast('This contact number is already registered to another account.', 'error');
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.warn(err);
+      } finally {
+        setLoading(false);
+      }
+
+      setStep(3);
+      return;
+    }
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
 
@@ -249,11 +333,7 @@ export default function OnboardingScreen({ onShowToast }) {
                 gap: '6px',
                 zIndex: 2,
                 cursor: 'pointer'
-              }} onClick={() => {
-                if (s.num < step) setStep(s.num);
-                else if (s.num === 2 && validateStep(1)) setStep(2);
-                else if (s.num === 3 && validateStep(1) && validateStep(2)) setStep(3);
-              }}>
+              }} onClick={() => handleStepNavigation(s.num)}>
                 <div style={{
                   width: '32px',
                   height: '32px',
