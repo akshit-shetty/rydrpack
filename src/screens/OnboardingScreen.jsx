@@ -112,6 +112,23 @@ export default function OnboardingScreen({ onShowToast }) {
         setLoading(false);
         return;
       }
+
+      // Check if contact already registered to someone else in the database
+      const { data: checkContactData, error: checkContactError } = await supabase
+        .from('riders')
+        .select('rider_id')
+        .eq('contact', contact.trim())
+        .maybeSingle();
+
+      if (checkContactError) {
+        console.warn('Supabase contact unique validation check error:', checkContactError.message);
+      }
+
+      if (checkContactData && checkContactData.rider_id !== existingRiderId) {
+        onShowToast('This contact number is already registered to another account.', 'error');
+        setLoading(false);
+        return;
+      }
     } catch (err) {
       console.warn('Failsafe check failed, continuing...', err);
     }
@@ -554,6 +571,32 @@ export default function OnboardingScreen({ onShowToast }) {
 
                     if (data && data.rider_id !== existingRiderId) {
                       onShowToast('This email is already registered to another account. Please log in instead.', 'error');
+                      setLoading(false);
+                      return;
+                    }
+                  } catch (err) {
+                    console.warn('Failsafe check failed, continuing...', err);
+                  } finally {
+                    setLoading(false);
+                  }
+                }
+
+                if (step === 2) {
+                  setLoading(true);
+                  try {
+                    const existingRiderId = localStorage.getItem('rydr_rider_id');
+                    const { data, error } = await supabase
+                      .from('riders')
+                      .select('rider_id')
+                      .eq('contact', contact.trim())
+                      .maybeSingle();
+
+                    if (error) {
+                      console.warn('Supabase contact validation check error:', error.message);
+                    }
+
+                    if (data && data.rider_id !== existingRiderId) {
+                      onShowToast('This contact number is already registered to another account.', 'error');
                       setLoading(false);
                       return;
                     }
