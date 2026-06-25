@@ -484,7 +484,7 @@ export default function LiveRideScreen({ onShowToast }) {
             Authorize GPS Location
           </h2>
           <p style={{ color: '#A1A1AA', fontSize: '0.88rem', lineHeight: '1.5', marginBottom: '28px', maxWidth: '300px' }}>
-            Rydr coordinates your location in real-time to show you and your pack on the HUD map. Locations are private to this session.
+            RydrPack coordinates your location in real-time to show you and your pack on the HUD map. Locations are private to this session.
           </p>
           <button className="btn btn-primary" onClick={handleEnableGPS} style={{ maxWidth: '240px' }}>
             📍 Authorize GPS
@@ -838,7 +838,7 @@ export default function LiveRideScreen({ onShowToast }) {
           }}>
             <div style={{ width: '40px', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', margin: '0 auto 20px' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff', fontFamily: 'Outfit' }}>Rydr Cohort List</h3>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff', fontFamily: 'Outfit' }}>RydrPack Cohort List</h3>
               <span style={{ fontSize: '0.78rem', color: '#A1A1AA' }}>{riders.length} Registered</span>
             </div>
 

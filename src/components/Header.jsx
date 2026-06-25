@@ -1,7 +1,7 @@
 import React from 'react';
 import { Menu, Bell } from 'lucide-react';
 
-export default function Header({ title = 'Rydr', onMenuClick, showMenu = true }) {
+export default function Header({ title = 'RydrPack', onMenuClick, showMenu = true }) {
   return (
     <header className="app-header">
       <div className="logo-group">

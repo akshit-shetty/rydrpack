@@ -278,7 +278,7 @@ export default function OnboardingScreen({ onShowToast }) {
 
   return (
     <div className="page" style={{ background: '#09090b', display: 'flex', flexDirection: 'column' }}>
-      <Header title="Rydr Profile" showMenu={false} />
+      <Header title="RydrPack Profile" showMenu={false} />
       
       <form onSubmit={handleSave} style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', flex: 1, boxSizing: 'border-box' }}>
         

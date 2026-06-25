@@ -97,7 +97,7 @@ export default function Sidebar({ isOpen, onClose, onShowToast }) {
             Edit Profile
           </button>
 
-          <button className="sidebar-item" onClick={() => { onClose(); alert('Rydr achievements & biker badges are active. Earn badges by completing group rides!'); }}>
+          <button className="sidebar-item" onClick={() => { onClose(); alert('RydrPack achievements & biker badges are active. Earn badges by completing group rides!'); }}>
             <Award size={18} />
             Rider Badges
           </button>
@@ -109,9 +109,9 @@ export default function Sidebar({ isOpen, onClose, onShowToast }) {
           
           <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.05)', margin: '10px 16px' }} />
           
-          <button className="sidebar-item" onClick={() => { onClose(); onShowToast('🏍️ Rydr v2.0 — Ride together, stay together.', 'success'); }}>
+          <button className="sidebar-item" onClick={() => { onClose(); onShowToast('🏍️ RydrPack v2.0 — Ride together, stay together.', 'success'); }}>
             <Info size={18} />
-            About Rydr
+            About RydrPack
           </button>
         </div>
 

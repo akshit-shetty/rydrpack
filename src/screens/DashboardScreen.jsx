@@ -107,7 +107,7 @@ export default function DashboardScreen({ onShowToast }) {
 
   return (
     <div className="page" style={{ background: '#09090b', overflowY: 'auto' }}>
-      <Header onMenuClick={() => setIsSidebarOpen(true)} title="Rydr Pack" />
+      <Header onMenuClick={() => setIsSidebarOpen(true)} title="RydrPack" />
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} onShowToast={onShowToast} />
 
       <div style={{ padding: '20px 20px 40px' }}>
