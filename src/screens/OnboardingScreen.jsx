@@ -75,7 +75,7 @@ export default function OnboardingScreen({ onShowToast }) {
     const profile = {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      email: email.trim(),
+      email: email.trim().toLowerCase(),
       password: password.trim(),
       contact: contact.trim(),
       emergencyContact: emergencyContact.trim(),
@@ -95,7 +95,7 @@ export default function OnboardingScreen({ onShowToast }) {
           rider_id: riderId,
           first_name: firstName.trim(),
           last_name: lastName.trim(),
-          email: email.trim(),
+          email: email.trim().toLowerCase(),
           password: password.trim(),
           contact: contact.trim(),
           emergency_contact: emergencyContact.trim(),

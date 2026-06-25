@@ -25,20 +25,22 @@ export default function LoginScreen({ onShowToast }) {
     setLoading(true);
 
     try {
-      // Query the riders table in Supabase for this email
+      // Query the riders table in Supabase for this email, sorted by newest first
       const { data, error } = await supabase
         .from('riders')
         .select('*')
         .eq('email', email.trim().toLowerCase())
-        .maybeSingle();
+        .order('created_at', { ascending: false });
 
       if (error) {
         throw new Error(error.message);
       }
 
-      if (data) {
+      if (data && data.length > 0) {
+        const riderRecord = data[0];
+        
         // Verify password
-        if (data.password && data.password !== password) {
+        if (riderRecord.password && riderRecord.password !== password) {
           onShowToast('Incorrect password. Please try again.', 'error');
           setLoading(false);
           return;
@@ -46,23 +48,23 @@ export default function LoginScreen({ onShowToast }) {
 
         // Reconstruct local profile cache
         const profile = {
-          firstName: data.first_name,
-          lastName: data.last_name,
-          email: data.email,
-          contact: data.contact,
-          emergencyContact: data.emergency_contact,
-          bloodGroup: data.blood_group,
-          bikeBrand: data.bike_brand,
-          bikeModel: data.bike_model,
-          rideStyle: data.ride_style,
-          pace: data.pace,
-          riderId: data.rider_id
+          firstName: riderRecord.first_name,
+          lastName: riderRecord.last_name,
+          email: riderRecord.email,
+          contact: riderRecord.contact,
+          emergencyContact: riderRecord.emergency_contact,
+          bloodGroup: riderRecord.blood_group,
+          bikeBrand: riderRecord.bike_brand,
+          bikeModel: riderRecord.bike_model,
+          rideStyle: riderRecord.ride_style,
+          pace: riderRecord.pace,
+          riderId: riderRecord.rider_id
         };
 
         localStorage.setItem('rydr_rider_profile', JSON.stringify(profile));
-        localStorage.setItem('rydr_rider_id', data.rider_id);
+        localStorage.setItem('rydr_rider_id', riderRecord.rider_id);
 
-        onShowToast(`Welcome back, ${data.first_name}! 🏍️`, 'success');
+        onShowToast(`Welcome back, ${riderRecord.first_name}! 🏍️`, 'success');
         
         setTimeout(() => {
           navigate('/dashboard');
