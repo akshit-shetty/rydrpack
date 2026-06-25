@@ -94,6 +94,28 @@ export default function OnboardingScreen({ onShowToast }) {
     setLoading(true);
     const riderId = localStorage.getItem('rydr_rider_id') || Math.random().toString(36).slice(2) + Date.now().toString(36);
 
+    try {
+      // Check if email already registered to someone else in the database
+      const existingRiderId = localStorage.getItem('rydr_rider_id');
+      const { data: checkData, error: checkError } = await supabase
+        .from('riders')
+        .select('rider_id')
+        .eq('email', email.trim().toLowerCase())
+        .maybeSingle();
+
+      if (checkError) {
+        console.warn('Supabase email unique validation check error:', checkError.message);
+      }
+
+      if (checkData && checkData.rider_id !== existingRiderId) {
+        onShowToast('This email is already registered to another account. Please log in instead.', 'error');
+        setLoading(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('Failsafe check failed, continuing...', err);
+    }
+
     const profile = {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
@@ -513,8 +535,36 @@ export default function OnboardingScreen({ onShowToast }) {
             <button
               type="button"
               className="btn btn-primary"
-              onClick={() => {
-                if (validateStep(step)) setStep(step + 1);
+              onClick={async () => {
+                if (!validateStep(step)) return;
+
+                if (step === 1) {
+                  setLoading(true);
+                  try {
+                    const existingRiderId = localStorage.getItem('rydr_rider_id');
+                    const { data, error } = await supabase
+                      .from('riders')
+                      .select('rider_id')
+                      .eq('email', email.trim().toLowerCase())
+                      .maybeSingle();
+
+                    if (error) {
+                      console.warn('Supabase email validation check error:', error.message);
+                    }
+
+                    if (data && data.rider_id !== existingRiderId) {
+                      onShowToast('This email is already registered to another account. Please log in instead.', 'error');
+                      setLoading(false);
+                      return;
+                    }
+                  } catch (err) {
+                    console.warn('Failsafe check failed, continuing...', err);
+                  } finally {
+                    setLoading(false);
+                  }
+                }
+
+                setStep(step + 1);
               }}
               style={{ flex: 2 }}
               disabled={loading}
