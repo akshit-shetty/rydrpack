@@ -48,15 +48,37 @@ export default function OnboardingScreen({ onShowToast }) {
   }, []);
 
   const validateStep = (s) => {
+    // Name validation pattern (letters and spaces only, 2-30 chars)
+    const nameRegex = /^[A-Za-z\s]{2,30}$/;
+    // Email validation pattern
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // Phone validation pattern (allows optional +, 10-15 digits)
+    const phoneRegex = /^\+?[0-9]{10,15}$/;
+
     if (s === 1) {
       if (!firstName.trim()) { onShowToast('First name is required', 'error'); return false; }
+      if (!nameRegex.test(firstName.trim())) { onShowToast('First name should contain letters only (2-30 characters)', 'error'); return false; }
+      
       if (!lastName.trim()) { onShowToast('Last name is required', 'error'); return false; }
+      if (!nameRegex.test(lastName.trim())) { onShowToast('Last name should contain letters only (2-30 characters)', 'error'); return false; }
+      
       if (!email.trim()) { onShowToast('Email is required', 'error'); return false; }
+      if (!emailRegex.test(email.trim())) { onShowToast('Please enter a valid email address (e.g. name@domain.com)', 'error'); return false; }
+      
       if (!password.trim()) { onShowToast('Password is required', 'error'); return false; }
       if (password.trim().length < 6) { onShowToast('Password must be at least 6 characters', 'error'); return false; }
     } else if (s === 2) {
       if (!contact.trim()) { onShowToast('Contact number is required', 'error'); return false; }
+      if (!phoneRegex.test(contact.trim())) { onShowToast('Please enter a valid contact number (10-15 digits)', 'error'); return false; }
+      
       if (!emergencyContact.trim()) { onShowToast('Emergency contact is required', 'error'); return false; }
+      if (!phoneRegex.test(emergencyContact.trim())) { onShowToast('Please enter a valid emergency contact number (10-15 digits)', 'error'); return false; }
+      
+      if (contact.trim() === emergencyContact.trim()) {
+        onShowToast('Emergency contact cannot be the same as your own contact number', 'error');
+        return false;
+      }
+      
       if (!bloodGroup) { onShowToast('Please select your blood group', 'error'); return false; }
     }
     return true;
