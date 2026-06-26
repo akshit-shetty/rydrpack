@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LandingScreen from './screens/LandingScreen';
 import LoginScreen from './screens/LoginScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
+import EditProfileScreen from './screens/EditProfileScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import CreateRideScreen from './screens/CreateRideScreen';
 import RideCreatedScreen from './screens/RideCreatedScreen';
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/" element={<LandingScreen />} />
           <Route path="/login" element={<LoginScreen onShowToast={showToast} />} />
           <Route path="/onboarding" element={<OnboardingScreen onShowToast={showToast} />} />
+          <Route path="/edit-profile" element={<EditProfileScreen onShowToast={showToast} />} />
           <Route path="/dashboard" element={<DashboardScreen onShowToast={showToast} />} />
           <Route path="/create-ride" element={<CreateRideScreen onShowToast={showToast} />} />
           <Route path="/ride-created" element={<RideCreatedScreen onShowToast={showToast} />} />

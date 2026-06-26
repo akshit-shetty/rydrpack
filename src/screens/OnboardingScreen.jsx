@@ -6,7 +6,7 @@ import { supabase } from '../supabase';
 
 export default function OnboardingScreen({ onShowToast }) {
   const navigate = useNavigate();
-  
+
   // Multi-step tracking
   const [step, setStep] = useState(1);
 
@@ -58,27 +58,27 @@ export default function OnboardingScreen({ onShowToast }) {
     if (s === 1) {
       if (!firstName.trim()) { onShowToast('First name is required', 'error'); return false; }
       if (!nameRegex.test(firstName.trim())) { onShowToast('First name should contain letters only (2-30 characters)', 'error'); return false; }
-      
+
       if (!lastName.trim()) { onShowToast('Last name is required', 'error'); return false; }
       if (!nameRegex.test(lastName.trim())) { onShowToast('Last name should contain letters only (2-30 characters)', 'error'); return false; }
-      
+
       if (!email.trim()) { onShowToast('Email is required', 'error'); return false; }
       if (!emailRegex.test(email.trim())) { onShowToast('Please enter a valid email address (e.g. name@domain.com)', 'error'); return false; }
-      
+
       if (!password.trim()) { onShowToast('Password is required', 'error'); return false; }
       if (password.trim().length < 6) { onShowToast('Password must be at least 6 characters', 'error'); return false; }
     } else if (s === 2) {
       if (!contact.trim()) { onShowToast('Contact number is required', 'error'); return false; }
       if (!phoneRegex.test(contact.trim())) { onShowToast('Please enter a valid contact number (10-15 digits)', 'error'); return false; }
-      
+
       if (!emergencyContact.trim()) { onShowToast('Emergency contact is required', 'error'); return false; }
       if (!phoneRegex.test(emergencyContact.trim())) { onShowToast('Please enter a valid emergency contact number (10-15 digits)', 'error'); return false; }
-      
+
       if (contact.trim() === emergencyContact.trim()) {
         onShowToast('Emergency contact cannot be the same as your own contact number', 'error');
         return false;
       }
-      
+
       if (!bloodGroup) { onShowToast('Please select your blood group', 'error'); return false; }
     }
     return true;
@@ -86,7 +86,7 @@ export default function OnboardingScreen({ onShowToast }) {
 
   const handleStepNavigation = async (targetStep) => {
     if (targetStep === step) return;
-    
+
     if (targetStep === 1) {
       setStep(1);
       return;
@@ -116,7 +116,7 @@ export default function OnboardingScreen({ onShowToast }) {
       } finally {
         setLoading(false);
       }
-      
+
       setStep(2);
       return;
     }
@@ -258,7 +258,7 @@ export default function OnboardingScreen({ onShowToast }) {
       // Save locally as cache fallback
       localStorage.setItem('rydr_rider_profile', JSON.stringify(profile));
       localStorage.setItem('rydr_rider_id', riderId);
-      
+
       onShowToast('Profile synced successfully! 🏍️', 'success');
       setTimeout(() => {
         navigate('/dashboard');
@@ -266,7 +266,7 @@ export default function OnboardingScreen({ onShowToast }) {
     } catch (err) {
       console.error(err);
       onShowToast('Database connection unavailable, profile saved locally.', 'error');
-      
+
       // Fallback local save
       localStorage.setItem('rydr_rider_profile', JSON.stringify(profile));
       localStorage.setItem('rydr_rider_id', riderId);
@@ -276,90 +276,61 @@ export default function OnboardingScreen({ onShowToast }) {
     }
   };
 
+  // Step metadata
+  const steps = [
+    { num: 1, label: 'Account', icon: <User size={13} /> },
+    { num: 2, label: 'Safety', icon: <ShieldAlert size={13} /> },
+    { num: 3, label: 'Garage', icon: <Bike size={13} /> },
+  ];
+
+  // Chip button style helper
+  const chipStyle = (active) => ({
+    flex: 1, padding: '11px 0',
+    borderRadius: '10px',
+    border: active ? '1.5px solid rgba(249,115,22,0.5)' : '1.5px solid rgba(255,255,255,0.07)',
+    background: active ? 'rgba(249,115,22,0.12)' : 'rgba(255,255,255,0.02)',
+    color: active ? '#F97316' : '#71717A',
+    fontSize: '0.8rem', fontWeight: 700,
+    cursor: 'pointer', transition: 'all 0.18s',
+    fontFamily: 'Inter, sans-serif',
+    textTransform: 'capitalize',
+  });
+
   return (
-    <div className="page" style={{ background: '#09090b', display: 'flex', flexDirection: 'column' }}>
+    <div className="page" style={{ background: 'radial-gradient(ellipse 80% 50% at 50% 0%, #1a0e06 0%, #09090b 55%)', display: 'flex', flexDirection: 'column' }}>
       <Header title="RydrPack Profile" showMenu={false} />
-      
-      <form onSubmit={handleSave} style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', flex: 1, boxSizing: 'border-box' }}>
-        
-        {/* Step Indicator */}
+
+      <form onSubmit={handleSave} style={{ padding: '16px 20px 32px', display: 'flex', flexDirection: 'column', flex: 1, boxSizing: 'border-box' }}>
+
+        {/* Step Tabs */}
         <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          display: 'flex', gap: '6px',
           background: 'rgba(255,255,255,0.02)',
           border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: '16px',
-          padding: '12px 16px',
-          marginBottom: '28px',
-          position: 'relative'
+          borderRadius: '14px', padding: '4px',
+          marginBottom: '20px',
         }}>
-          {/* Progress bar line */}
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '12%',
-            right: '12%',
-            height: '2px',
-            background: 'rgba(255,255,255,0.08)',
-            zIndex: 1,
-            transform: 'translateY(-50%)'
-          }} />
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '12%',
-            width: step === 1 ? '0%' : step === 2 ? '38%' : '76%',
-            height: '2px',
-            background: 'linear-gradient(90deg, #F97316, #FF5500)',
-            boxShadow: '0 0 8px #F97316',
-            zIndex: 1,
-            transform: 'translateY(-50%)',
-            transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-          }} />
-
-          {[
-            { num: 1, label: 'Account', icon: <User size={14} /> },
-            { num: 2, label: 'Safety', icon: <ShieldAlert size={14} /> },
-            { num: 3, label: 'Garage', icon: <Bike size={14} /> }
-          ].map((s) => {
-            const isActive = step >= s.num;
-            const isCurrent = step === s.num;
+          {steps.map((s) => {
+            const isActive = step === s.num;
+            const isDone = step > s.num;
             return (
-              <div key={s.num} style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '6px',
-                zIndex: 2,
-                cursor: 'pointer'
-              }} onClick={() => handleStepNavigation(s.num)}>
-                <div style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  background: isCurrent 
-                    ? 'linear-gradient(135deg, #F97316, #FF5500)' 
-                    : isActive ? '#1e1b18' : '#121214',
-                  border: isCurrent 
-                    ? '2px solid #FFF' 
-                    : isActive ? '1px solid #F97316' : '1px solid rgba(255,255,255,0.1)',
-                  boxShadow: isCurrent ? '0 0 12px rgba(249, 115, 22, 0.4)' : 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: isActive ? '#fff' : '#52525B',
-                  transition: 'all 0.3s'
-                }}>
+              <div
+                key={s.num}
+                onClick={() => handleStepNavigation(s.num)}
+                style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                  padding: '9px 4px', borderRadius: '10px', cursor: 'pointer',
+                  background: isActive ? '#F97316' : isDone ? 'rgba(249,115,22,0.12)' : 'transparent',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <span style={{ color: isActive ? '#fff' : isDone ? '#F97316' : '#52525B', display: 'flex' }}>
                   {s.icon}
-                </div>
+                </span>
                 <span style={{
-                  fontSize: '0.68rem',
-                  fontWeight: isActive ? 700 : 500,
-                  color: isCurrent ? '#F97316' : isActive ? '#FAFAFA' : '#52525B',
-                  fontFamily: 'Outfit',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
+                  fontSize: '0.68rem', fontWeight: 700,
+                  color: isActive ? '#fff' : isDone ? '#F97316' : '#52525B',
+                  textTransform: 'uppercase', letterSpacing: '0.4px',
                 }}>
                   {s.label}
                 </span>
@@ -368,151 +339,134 @@ export default function OnboardingScreen({ onShowToast }) {
           })}
         </div>
 
-        {/* Step Contents */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          
+        {/* Step Card */}
+        <div className="card" style={{
+          background: 'rgba(14,14,16,0.75)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          padding: '24px 20px',
+          borderRadius: '20px',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.4)',
+          display: 'flex', flexDirection: 'column',
+          flex: 1, justifyContent: 'flex-start', gap: '14px',
+          marginBottom: '16px',
+        }}>
+
+          {/* ─── STEP 1: Account ─── */}
           {step === 1 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', animation: 'fadeIn 0.25s' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', animation: 'fadeSlideUp 0.25s ease' }}>
               <div>
-                <h3 style={{ fontFamily: 'Outfit', fontSize: '1.3rem', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
+                <h3 style={{ fontFamily: 'Outfit', fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>
                   Create Account
                 </h3>
-                <p style={{ fontSize: '0.8rem', color: '#A1A1AA', marginBottom: '10px' }}>
-                  Set up your Rider profile credentials.
+                <p style={{ fontSize: '0.76rem', color: '#71717A', marginTop: '4px', lineHeight: '1.5' }}>
+                  Set up your rider profile credentials.
                 </p>
               </div>
 
-              {/* First Name */}
-              <div className="form-field">
-                <label className="field-label">First Name</label>
-                <div className="input-wrapper">
-                  <span className="input-icon"><User size={18} /></span>
-                  <input 
-                    className="field-input" 
-                    type="text" 
-                    placeholder="e.g. Akshay" 
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    maxLength={25}
-                    disabled={loading}
-                    autoComplete="given-name"
-                  />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="form-field" style={{ marginBottom: 0 }}>
+                  <label className="field-label">First Name</label>
+                  <div className="input-wrapper">
+                    <span className="input-icon"><User size={15} /></span>
+                    <input className="field-input" type="text" placeholder="e.g. Akshay"
+                      value={firstName} onChange={(e) => setFirstName(e.target.value)}
+                      maxLength={25} disabled={loading} autoComplete="given-name" />
+                  </div>
+                </div>
+
+                <div className="form-field" style={{ marginBottom: 0 }}>
+                  <label className="field-label">Last Name</label>
+                  <div className="input-wrapper">
+                    <span className="input-icon"><User size={15} /></span>
+                    <input className="field-input" type="text" placeholder="e.g. Shetty"
+                      value={lastName} onChange={(e) => setLastName(e.target.value)}
+                      maxLength={25} disabled={loading} autoComplete="family-name" />
+                  </div>
                 </div>
               </div>
 
-              {/* Last Name */}
-              <div className="form-field">
-                <label className="field-label">Last Name</label>
-                <div className="input-wrapper">
-                  <span className="input-icon"><User size={18} /></span>
-                  <input 
-                    className="field-input" 
-                    type="text" 
-                    placeholder="e.g. Shetty" 
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    maxLength={25}
-                    disabled={loading}
-                    autoComplete="family-name"
-                  />
-                </div>
-              </div>
-
-              {/* Email */}
-              <div className="form-field">
+              <div className="form-field" style={{ marginBottom: 0 }}>
                 <label className="field-label">Email Address</label>
                 <div className="input-wrapper">
-                  <span className="input-icon"><Mail size={18} /></span>
-                  <input 
-                    className="field-input" 
-                    type="email" 
-                    placeholder="e.g. akshay@example.com" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={loading}
-                    autoComplete="email"
-                  />
+                  <span className="input-icon"><Mail size={15} /></span>
+                  <input className="field-input" type="email" placeholder="e.g. akshay@example.com"
+                    value={email} onChange={(e) => setEmail(e.target.value)}
+                    disabled={loading} autoComplete="email" />
                 </div>
               </div>
 
-              {/* Password */}
-              <div className="form-field">
+              <div className="form-field" style={{ marginBottom: 0 }}>
                 <label className="field-label">Password</label>
                 <div className="input-wrapper">
-                  <span className="input-icon"><Lock size={18} /></span>
-                  <input 
-                    className="field-input" 
-                    type="password" 
-                    placeholder="Min 6 characters" 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={loading}
-                    autoComplete="new-password"
-                  />
+                  <span className="input-icon"><Lock size={15} /></span>
+                  <input className="field-input" type="password" placeholder="Min 6 characters"
+                    value={password} onChange={(e) => setPassword(e.target.value)}
+                    disabled={loading} autoComplete="new-password" />
                 </div>
               </div>
             </div>
           )}
 
+          {/* ─── STEP 2: Safety ─── */}
           {step === 2 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', animation: 'fadeIn 0.25s' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', animation: 'fadeSlideUp 0.25s ease' }}>
               <div>
-                <h3 style={{ fontFamily: 'Outfit', fontSize: '1.3rem', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
-                  Safety & Emergency Config
+                <h3 style={{ fontFamily: 'Outfit', fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>
+                  Safety & Emergency
                 </h3>
-                <p style={{ fontSize: '0.8rem', color: '#A1A1AA', marginBottom: '10px' }}>
-                  Crucial data for tracking safety and emergency broadcast triggers.
+                <p style={{ fontSize: '0.76rem', color: '#71717A', marginTop: '4px', lineHeight: '1.5' }}>
+                  Critical data for emergency broadcast triggers.
                 </p>
               </div>
 
-              {/* Contact */}
-              <div className="form-field">
+              <div className="form-field" style={{ marginBottom: 0 }}>
                 <label className="field-label">Contact Number</label>
                 <div className="input-wrapper">
-                  <span className="input-icon"><Phone size={18} /></span>
-                  <input 
-                    className="field-input" 
-                    type="tel" 
-                    placeholder="e.g. 9876543210" 
-                    value={contact}
-                    onChange={(e) => setContact(e.target.value)}
-                    disabled={loading}
-                    autoComplete="tel"
-                  />
+                  <span className="input-icon"><Phone size={15} /></span>
+                  <input className="field-input" type="tel" placeholder="e.g. 9876543210"
+                    value={contact} onChange={(e) => setContact(e.target.value)}
+                    disabled={loading} autoComplete="tel" />
                 </div>
               </div>
 
-              {/* Emergency Contact */}
-              <div style={{ border: '1px solid rgba(239, 68, 68, 0.2)', padding: '14px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.03)' }}>
-                <label className="field-label" style={{ color: '#EF4444', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                  <ShieldAlert size={14} /> SOS Emergency Broadcast Contact
-                </label>
-                <div className="input-wrapper">
-                  <span className="input-icon"><Phone size={18} /></span>
-                  <input 
-                    className="field-input" 
-                    type="tel" 
-                    placeholder="Emergency Phone Number" 
-                    value={emergencyContact}
-                    onChange={(e) => setEmergencyContact(e.target.value)}
-                    style={{ borderColor: 'rgba(239, 68, 68, 0.2)' }}
-                    disabled={loading}
-                  />
+              {/* Emergency contact — special card */}
+              <div style={{
+                border: '1px solid rgba(239,68,68,0.18)',
+                borderRadius: '14px',
+                background: 'rgba(239,68,68,0.03)',
+                overflow: 'hidden',
+              }}>
+                <div style={{
+                  background: 'rgba(239,68,68,0.06)',
+                  borderBottom: '1px solid rgba(239,68,68,0.12)',
+                  padding: '10px 16px',
+                  display: 'flex', alignItems: 'center', gap: '7px',
+                }}>
+                  <ShieldAlert size={14} style={{ color: '#EF4444' }} />
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#EF4444', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    SOS Emergency Contact
+                  </span>
+                </div>
+                <div style={{ padding: '12px 14px' }}>
+                  <div className="input-wrapper">
+                    <span className="input-icon"><Phone size={15} /></span>
+                    <input className="field-input" type="tel" placeholder="Emergency Phone Number"
+                      value={emergencyContact} onChange={(e) => setEmergencyContact(e.target.value)}
+                      style={{ borderColor: 'rgba(239,68,68,0.2)', background: '#0e0e10' }}
+                      disabled={loading} />
+                  </div>
                 </div>
               </div>
 
-              {/* Blood Group */}
-              <div className="form-field">
+              <div className="form-field" style={{ marginBottom: 0 }}>
                 <label className="field-label">Blood Group</label>
                 <div className="input-wrapper">
-                  <span className="input-icon"><Heart size={18} /></span>
-                  <select 
-                    className="field-input" 
-                    value={bloodGroup}
+                  <span className="input-icon"><Heart size={15} /></span>
+                  <select className="field-input" value={bloodGroup}
                     onChange={(e) => setBloodGroup(e.target.value)}
-                    style={{ appearance: 'none', background: '#121214', cursor: 'pointer' }}
-                    disabled={loading}
-                  >
+                    style={{ appearance: 'none', background: '#0e0e10', cursor: 'pointer' }}
+                    disabled={loading}>
                     <option value="" disabled>Select Blood Type</option>
                     <option value="A+">A+</option>
                     <option value="A-">A-</option>
@@ -528,61 +482,47 @@ export default function OnboardingScreen({ onShowToast }) {
             </div>
           )}
 
+          {/* ─── STEP 3: Garage ─── */}
           {step === 3 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', animation: 'fadeIn 0.25s' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', animation: 'fadeSlideUp 0.25s ease' }}>
               <div>
-                <h3 style={{ fontFamily: 'Outfit', fontSize: '1.3rem', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
+                <h3 style={{ fontFamily: 'Outfit', fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>
                   Garage & Ride Profile
                 </h3>
-                <p style={{ fontSize: '0.8rem', color: '#A1A1AA', marginBottom: '10px' }}>
-                  Help your crew understand your ride preferences.
+                <p style={{ fontSize: '0.76rem', color: '#71717A', marginTop: '4px', lineHeight: '1.5' }}>
+                  Help your crew understand your preferences.
                 </p>
               </div>
 
-              {/* Bike Info */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="form-field">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="form-field" style={{ marginBottom: 0 }}>
                   <label className="field-label">Bike Brand</label>
                   <div className="input-wrapper">
-                    <span className="input-icon"><Bike size={18} /></span>
-                    <input 
-                      className="field-input" 
-                      type="text" 
-                      placeholder="e.g. KTM" 
-                      value={bikeBrand}
-                      onChange={(e) => setBikeBrand(e.target.value)}
-                      disabled={loading}
-                    />
+                    <span className="input-icon"><Bike size={15} /></span>
+                    <input className="field-input" type="text" placeholder="e.g. KTM"
+                      value={bikeBrand} onChange={(e) => setBikeBrand(e.target.value)}
+                      disabled={loading} />
                   </div>
                 </div>
-                <div className="form-field">
+                <div className="form-field" style={{ marginBottom: 0 }}>
                   <label className="field-label">Bike Model</label>
                   <div className="input-wrapper">
-                    <span className="input-icon"><Bike size={18} /></span>
-                    <input 
-                      className="field-input" 
-                      type="text" 
-                      placeholder="e.g. Duke 390" 
-                      value={bikeModel}
-                      onChange={(e) => setBikeModel(e.target.value)}
-                      disabled={loading}
-                    />
+                    <span className="input-icon"><Bike size={15} /></span>
+                    <input className="field-input" type="text" placeholder="e.g. Duke 390"
+                      value={bikeModel} onChange={(e) => setBikeModel(e.target.value)}
+                      disabled={loading} />
                   </div>
                 </div>
               </div>
 
-              {/* Preferred Style */}
-              <div className="form-field">
+              <div className="form-field" style={{ marginBottom: 0 }}>
                 <label className="field-label">Riding Preference</label>
                 <div className="input-wrapper">
-                  <span className="input-icon"><Compass size={18} /></span>
-                  <select 
-                    className="field-input" 
-                    value={rideStyle}
+                  <span className="input-icon"><Compass size={15} /></span>
+                  <select className="field-input" value={rideStyle}
                     onChange={(e) => setRideStyle(e.target.value)}
-                    style={{ appearance: 'none', background: '#121214', cursor: 'pointer' }}
-                    disabled={loading}
-                  >
+                    style={{ appearance: 'none', background: '#0e0e10', cursor: 'pointer' }}
+                    disabled={loading}>
                     <option value="cruising">Cruising / Touring</option>
                     <option value="offroading">Offroading / Adventure</option>
                     <option value="racing">Track / Fast Riding</option>
@@ -591,19 +531,14 @@ export default function OnboardingScreen({ onShowToast }) {
                 </div>
               </div>
 
-              {/* Preferred Pace */}
-              <div className="form-field">
+              <div className="form-field" style={{ marginBottom: 0 }}>
                 <label className="field-label">Preferred Pace</label>
-                <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
                   {['relaxed', 'normal', 'fast'].map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      className={`btn ${pace === p ? 'btn-primary' : 'btn-secondary'}`}
-                      style={{ flex: 1, padding: '12px 0', textTransform: 'capitalize', fontSize: '0.82rem' }}
+                    <button key={p} type="button"
+                      style={chipStyle(pace === p)}
                       onClick={() => setPace(p)}
-                      disabled={loading}
-                    >
+                      disabled={loading}>
                       {p}
                     </button>
                   ))}
@@ -611,27 +546,28 @@ export default function OnboardingScreen({ onShowToast }) {
               </div>
             </div>
           )}
-
         </div>
 
-        {/* Navigation Buttons */}
-        <div style={{ display: 'flex', gap: '12px', marginTop: 'auto', paddingTop: '24px' }}>
+        {/* Navigation buttons */}
+        <div style={{ display: 'flex', gap: '10px' }}>
           {step > 1 && (
             <button
               type="button"
               className="btn btn-secondary"
               onClick={() => setStep(step - 1)}
-              style={{ flex: 1 }}
+              style={{ flex: 1, borderRadius: '12px' }}
               disabled={loading}
             >
               <ChevronLeft size={16} /> Back
             </button>
           )}
-          
+
           {step < 3 ? (
             <button
               type="button"
               className="btn btn-primary"
+              style={{ flex: 2, borderRadius: '12px' }}
+              disabled={loading}
               onClick={async () => {
                 if (!validateStep(step)) return;
 
@@ -689,20 +625,18 @@ export default function OnboardingScreen({ onShowToast }) {
 
                 setStep(step + 1);
               }}
-              style={{ flex: 2 }}
-              disabled={loading}
             >
-              Next Step <ChevronRight size={16} />
+              {loading ? 'Checking...' : 'Next Step'} <ChevronRight size={16} />
             </button>
           ) : (
             <button
               type="submit"
               className="btn btn-primary"
-              style={{ flex: 2 }}
+              style={{ flex: 2, borderRadius: '12px' }}
               disabled={loading}
             >
               {loading ? 'Registering...' : 'Create Rider Profile'}
-              <ShieldCheck size={16} style={{ marginLeft: '4px' }} />
+              <ShieldCheck size={16} />
             </button>
           )}
         </div>

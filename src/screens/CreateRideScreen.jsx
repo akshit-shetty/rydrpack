@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Calendar, Users, ShieldAlert, Sparkles, ChevronRight, Compass } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Users, ShieldAlert, Sparkles, ChevronRight, Compass, Clock } from 'lucide-react';
 import { supabase, MAPTILER_KEY } from '../supabase';
 
 export default function CreateRideScreen({ onShowToast }) {
@@ -77,7 +77,7 @@ export default function CreateRideScreen({ onShowToast }) {
 
     setLoading(true);
     const rideId = generateRideId();
-    
+
     // Retrieve host profile
     let hostProfile = null;
     try {
@@ -141,7 +141,7 @@ export default function CreateRideScreen({ onShowToast }) {
       sessionStorage.setItem('rydr_last_created_ride_id', rideId);
 
       onShowToast('Ride published! 🏍️', 'success');
-      
+
       setTimeout(() => {
         navigate(`/ride-created?rideId=${rideId}`);
       }, 700);
@@ -154,48 +154,76 @@ export default function CreateRideScreen({ onShowToast }) {
     }
   };
 
+  // Chip button helper
+  const chipStyle = (active, color = '#F97316') => ({
+    flex: 1, padding: '11px 0',
+    borderRadius: '10px',
+    border: active ? `1.5px solid ${color}55` : '1.5px solid rgba(255,255,255,0.07)',
+    background: active ? `${color}15` : 'rgba(255,255,255,0.02)',
+    color: active ? color : '#71717A',
+    fontSize: '0.8rem', fontWeight: 700,
+    cursor: 'pointer', transition: 'all 0.18s',
+    fontFamily: 'Inter, sans-serif',
+    textTransform: 'capitalize',
+  });
+
+  // Step progress indicator
+  const stepLabels = ['Basics', 'Route', 'Safety'];
+
   return (
     <div className="page" style={{ background: '#09090b', overflowY: 'auto' }}>
-      
+
       {/* Header */}
       <header className="app-header">
         <button className="icon-btn" onClick={() => step > 1 ? setStep(step - 1) : navigate('/dashboard')} disabled={loading}>
-          <ArrowLeft size={18} />
+          <ArrowLeft size={17} />
         </button>
-        <span className="logo-text" style={{ fontSize: '1.15rem' }}>Create Ride</span>
+        <span style={{ fontFamily: 'Outfit', fontWeight: 800, fontSize: '1rem', color: '#F4F4F5' }}>Create Ride</span>
         <span style={{ width: '40px' }} />
       </header>
 
-      {/* Steps indicator */}
-      <div style={{ display: 'flex', gap: '6px', padding: '0 20px', marginTop: '10px' }}>
-        {[1, 2, 3].map((s) => (
-          <div 
-            key={s} 
-            style={{ 
-              flex: 1, 
-              height: '4px', 
-              borderRadius: '2px', 
-              background: s <= step ? 'linear-gradient(90deg, #F97316, #FF5500)' : 'rgba(255,255,255,0.06)' 
-            }} 
-          />
-        ))}
+      {/* Step progress pills */}
+      <div style={{ display: 'flex', gap: '6px', padding: '0 20px', marginTop: '6px' }}>
+        {stepLabels.map((label, idx) => {
+          const s = idx + 1;
+          const isActive = step === s;
+          const isDone = step > s;
+          return (
+            <div key={s} style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+            }}>
+              <div style={{
+                width: '100%', height: '3px', borderRadius: '2px',
+                background: isDone ? '#F97316' : isActive ? '#F97316' : 'rgba(255,255,255,0.06)',
+                opacity: isActive ? 1 : isDone ? 0.7 : 1,
+                transition: 'all 0.3s',
+              }} />
+              <span style={{
+                fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.4px',
+                textTransform: 'uppercase',
+                color: isActive ? '#F97316' : isDone ? '#52525B' : '#3F3F46',
+                transition: 'all 0.3s',
+              }}>{label}</span>
+            </div>
+          );
+        })}
       </div>
 
-      <div style={{ padding: '24px 20px 40px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '20px 20px 48px', flex: 1, display: 'flex', flexDirection: 'column' }}>
 
         {/* STEP 1: Basic Info */}
         {step === 1 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', flex: 1, animation: 'fadeSlideUp 0.25s ease' }}>
             <div>
-              <h2 style={{ fontFamily: 'Outfit', fontSize: '1.45rem', fontWeight: 800, color: '#fff' }}>Ride Basics</h2>
-              <p style={{ fontSize: '0.82rem', color: '#A1A1AA', marginTop: '4px' }}>Name your adventure and set your crew format.</p>
+              <h2 style={{ fontFamily: 'Outfit', fontSize: '1.4rem', fontWeight: 800, color: '#F4F4F5' }}>Ride Basics</h2>
+              <p style={{ fontSize: '0.78rem', color: '#71717A', marginTop: '4px', lineHeight: '1.5' }}>Name your adventure and set your crew format.</p>
             </div>
 
             <div className="form-field">
               <label className="field-label">Ride Name</label>
               <div className="input-wrapper">
-                <span className="input-icon"><Compass size={18} /></span>
-                <input 
+                <span className="input-icon"><Compass size={16} /></span>
+                <input
                   className="field-input"
                   type="text"
                   placeholder="e.g. Lonavala Breakfast Cruise"
@@ -209,31 +237,39 @@ export default function CreateRideScreen({ onShowToast }) {
 
             <div className="form-field">
               <label className="field-label">Ride Format</label>
-              <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ display: 'flex', gap: '10px' }}>
                 <button
                   type="button"
-                  className={`btn ${rideType === 'group' ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ flex: 1, padding: '14px 0', fontSize: '0.88rem' }}
                   onClick={() => setRideType('group')}
                   disabled={loading}
+                  style={{
+                    ...chipStyle(rideType === 'group'),
+                    flex: 1, padding: '16px 0', fontSize: '0.9rem',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+                  }}
                 >
-                  👥 Pack Ride
+                  <span style={{ fontSize: '1.4rem' }}>👥</span>
+                  <span>Pack Ride</span>
                 </button>
                 <button
                   type="button"
-                  className={`btn ${rideType === 'solo' ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ flex: 1, padding: '14px 0', fontSize: '0.88rem' }}
                   onClick={() => setRideType('solo')}
                   disabled={loading}
+                  style={{
+                    ...chipStyle(rideType === 'solo'),
+                    flex: 1, padding: '16px 0', fontSize: '0.9rem',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+                  }}
                 >
-                  🏍️ Solo Track
+                  <span style={{ fontSize: '1.4rem' }}>🏍️</span>
+                  <span>Solo Track</span>
                 </button>
               </div>
             </div>
 
-            <button 
-              className="btn btn-primary" 
-              style={{ marginTop: 'auto' }}
+            <button
+              className="btn btn-primary"
+              style={{ marginTop: 'auto', borderRadius: '12px' }}
               disabled={!title.trim() || loading}
               onClick={() => setStep(2)}
             >
@@ -244,17 +280,17 @@ export default function CreateRideScreen({ onShowToast }) {
 
         {/* STEP 2: Location & Route */}
         {step === 2 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', flex: 1, animation: 'fadeSlideUp 0.25s ease' }}>
             <div>
-              <h2 style={{ fontFamily: 'Outfit', fontSize: '1.45rem', fontWeight: 800, color: '#fff' }}>Route Coordinates</h2>
-              <p style={{ fontSize: '0.82rem', color: '#A1A1AA', marginTop: '4px' }}>Set your destination to compute distance and ETA lines.</p>
+              <h2 style={{ fontFamily: 'Outfit', fontSize: '1.4rem', fontWeight: 800, color: '#F4F4F5' }}>Route Coordinates</h2>
+              <p style={{ fontSize: '0.78rem', color: '#71717A', marginTop: '4px', lineHeight: '1.5' }}>Set your destination to compute distance and ETA.</p>
             </div>
 
             <div className="form-field" style={{ position: 'relative' }}>
               <label className="field-label">Destination</label>
               <div className="input-wrapper">
-                <span className="input-icon"><MapPin size={18} /></span>
-                <input 
+                <span className="input-icon"><MapPin size={16} /></span>
+                <input
                   className="field-input"
                   type="text"
                   placeholder="Search destination town / waypoint"
@@ -263,38 +299,42 @@ export default function CreateRideScreen({ onShowToast }) {
                   disabled={loading}
                 />
               </div>
-              
+              {selectedDest && (
+                <div style={{
+                  marginTop: '6px', padding: '8px 12px',
+                  background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)',
+                  borderRadius: '10px', fontSize: '0.76rem', color: '#10B981', fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                }}>
+                  ✓ {selectedDest.name.split(',').slice(0,2).join(',')}
+                </div>
+              )}
+
               {/* Autocomplete suggestions */}
               {destSuggestions.length > 0 && (
                 <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  background: '#121214',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: '12px',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-                  zIndex: 200,
-                  marginTop: '4px',
-                  maxHeight: '200px',
-                  overflowY: 'auto'
+                  position: 'absolute', top: '100%', left: 0, right: 0,
+                  background: '#111113', border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+                  zIndex: 200, marginTop: '4px',
+                  maxHeight: '200px', overflowY: 'auto',
                 }}>
                   {destSuggestions.map((s, idx) => (
-                    <div 
+                    <div
                       key={idx}
                       onClick={() => handleSelectDest(s)}
                       style={{
                         padding: '12px 16px',
-                        borderBottom: '1px solid rgba(255,255,255,0.03)',
-                        cursor: 'pointer',
-                        fontSize: '0.82rem',
-                        color: '#FAFAFA'
+                        borderBottom: '1px solid rgba(255,255,255,0.04)',
+                        cursor: 'pointer', fontSize: '0.82rem', color: '#F4F4F5',
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        transition: 'background 0.15s',
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                     >
-                      📍 {s.name}
+                      <MapPin size={13} style={{ color: '#F97316', flexShrink: 0 }} />
+                      {s.name}
                     </div>
                   ))}
                 </div>
@@ -305,8 +345,8 @@ export default function CreateRideScreen({ onShowToast }) {
               <div className="form-field">
                 <label className="field-label">Ride Date</label>
                 <div className="input-wrapper">
-                  <span className="input-icon"><Calendar size={18} /></span>
-                  <input 
+                  <span className="input-icon"><Calendar size={16} /></span>
+                  <input
                     className="field-input"
                     type="date"
                     value={rideDate}
@@ -316,12 +356,12 @@ export default function CreateRideScreen({ onShowToast }) {
                   />
                 </div>
               </div>
-              
+
               <div className="form-field">
                 <label className="field-label">Departure</label>
                 <div className="input-wrapper">
-                  <span className="input-icon"><Compass size={18} /></span>
-                  <input 
+                  <span className="input-icon"><Clock size={16} /></span>
+                  <input
                     className="field-input"
                     type="time"
                     value={rideTime}
@@ -333,9 +373,9 @@ export default function CreateRideScreen({ onShowToast }) {
               </div>
             </div>
 
-            <button 
-              className="btn btn-primary" 
-              style={{ marginTop: 'auto' }}
+            <button
+              className="btn btn-primary"
+              style={{ marginTop: 'auto', borderRadius: '12px' }}
               disabled={!selectedDest || loading}
               onClick={() => setStep(3)}
             >
@@ -346,27 +386,18 @@ export default function CreateRideScreen({ onShowToast }) {
 
         {/* STEP 3: Safety & Final Review */}
         {step === 3 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', flex: 1, animation: 'fadeSlideUp 0.25s ease' }}>
             <div>
-              <h2 style={{ fontFamily: 'Outfit', fontSize: '1.45rem', fontWeight: 800, color: '#fff' }}>Safety & Privacy</h2>
-              <p style={{ fontSize: '0.82rem', color: '#A1A1AA', marginTop: '4px' }}>Establish pacing protocols and security rules.</p>
+              <h2 style={{ fontFamily: 'Outfit', fontSize: '1.4rem', fontWeight: 800, color: '#F4F4F5' }}>Safety & Privacy</h2>
+              <p style={{ fontSize: '0.78rem', color: '#71717A', marginTop: '4px', lineHeight: '1.5' }}>Establish pacing protocols and security rules.</p>
             </div>
 
-            {/* Ride Pace */}
+            {/* Preferred Pace */}
             <div className="form-field">
               <label className="field-label">Preferred Pace</label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {['relaxed', 'normal', 'fast'].map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    className={`btn ${pace === p ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ flex: 1, padding: '10px 0', textTransform: 'capitalize', fontSize: '0.8rem' }}
-                    onClick={() => setPace(p)}
-                    disabled={loading}
-                  >
-                    {p}
-                  </button>
+                  <button key={p} type="button" style={chipStyle(pace === p)} onClick={() => setPace(p)} disabled={loading}>{p}</button>
                 ))}
               </div>
             </div>
@@ -376,26 +407,17 @@ export default function CreateRideScreen({ onShowToast }) {
               <label className="field-label">Privacy Setting</label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {['public', 'invite', 'private'].map((priv) => (
-                  <button
-                    key={priv}
-                    type="button"
-                    className={`btn ${privacy === priv ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ flex: 1, padding: '10px 0', textTransform: 'capitalize', fontSize: '0.8rem' }}
-                    onClick={() => setPrivacy(priv)}
-                    disabled={loading}
-                  >
-                    {priv}
-                  </button>
+                  <button key={priv} type="button" style={chipStyle(privacy === priv)} onClick={() => setPrivacy(priv)} disabled={loading}>{priv}</button>
                 ))}
               </div>
             </div>
 
-            {/* Limit */}
+            {/* Size limit */}
             <div className="form-field">
               <label className="field-label">Group Size Limit</label>
               <div className="input-wrapper">
-                <span className="input-icon"><Users size={18} /></span>
-                <input 
+                <span className="input-icon"><Users size={16} /></span>
+                <input
                   className="field-input"
                   type="number"
                   placeholder="e.g. 15"
@@ -410,8 +432,8 @@ export default function CreateRideScreen({ onShowToast }) {
             <div className="form-field">
               <label className="field-label">Safety & Route Notes</label>
               <div className="input-wrapper">
-                <span className="input-icon" style={{ top: '16px' }}><ShieldAlert size={18} /></span>
-                <textarea 
+                <span className="input-icon" style={{ top: '16px' }}><ShieldAlert size={16} /></span>
+                <textarea
                   className="field-input"
                   placeholder="e.g. Wear full gear. Keep headlights on. Watch for gravel on loops."
                   value={safetyNotes}
@@ -423,18 +445,23 @@ export default function CreateRideScreen({ onShowToast }) {
             </div>
 
             {/* Summary card */}
-            <div className="card" style={{ padding: '14px', marginTop: '10px', background: 'rgba(249,115,22,0.03)', borderColor: 'rgba(249,115,22,0.1)' }}>
-              <h4 style={{ fontSize: '0.82rem', fontWeight: 700, color: '#F97316', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Sparkles size={14} /> Ready to Publish
-              </h4>
-              <p style={{ fontSize: '0.72rem', color: '#A1A1AA', marginTop: '4px', lineHeight: '1.4' }}>
-                Creating <strong>{title}</strong> to <strong>{selectedDest?.name.split(',')[0]}</strong>. A shareable invite card with QR code and live WhatsApp/Telegram links will be ready.
+            <div style={{
+              padding: '14px 16px', borderRadius: '14px',
+              background: 'rgba(249,115,22,0.04)', border: '1px solid rgba(249,115,22,0.15)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                <Sparkles size={14} style={{ color: '#F97316' }} />
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#F97316' }}>Ready to Publish</span>
+                <span className="badge-pill badge-green" style={{ marginLeft: 'auto' }}>✓ Set</span>
+              </div>
+              <p style={{ fontSize: '0.72rem', color: '#71717A', lineHeight: '1.5' }}>
+                Creating <strong style={{ color: '#A1A1AA' }}>{title}</strong> to <strong style={{ color: '#A1A1AA' }}>{selectedDest?.name.split(',')[0]}</strong>. A shareable invite card with QR code will be ready.
               </p>
             </div>
 
-            <button 
-              className="btn btn-primary" 
-              style={{ marginTop: 'auto' }}
+            <button
+              className="btn btn-primary"
+              style={{ marginTop: 'auto', borderRadius: '12px' }}
               onClick={handlePublish}
               disabled={loading}
             >

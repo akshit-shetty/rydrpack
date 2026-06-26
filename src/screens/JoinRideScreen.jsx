@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Key, User, Bike, Play, ShieldCheck } from 'lucide-react';
-import Header from '../components/Header';
+import { ArrowLeft, Key, User, Bike, Play, ShieldCheck, MapPin } from 'lucide-react';
 import { supabase } from '../supabase';
 
 export default function JoinRideScreen({ onShowToast }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
+
   const [rideIdInput, setRideIdInput] = useState('');
   const [riderName, setRiderName] = useState('');
   const [bikeName, setBikeName] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   // Preview ride details
   const [ridePreview, setRidePreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -172,28 +171,32 @@ export default function JoinRideScreen({ onShowToast }) {
       {/* Header */}
       <header className="app-header">
         <button className="icon-btn" onClick={() => navigate('/dashboard')} disabled={loading}>
-          <ArrowLeft size={18} />
+          <ArrowLeft size={17} />
         </button>
-        <span className="logo-text" style={{ fontSize: '1.15rem' }}>Join Ride</span>
+        <span style={{ fontFamily: 'Outfit', fontWeight: 800, fontSize: '1rem', color: '#F4F4F5' }}>Join Ride</span>
         <span style={{ width: '40px' }} />
       </header>
 
-      <form onSubmit={handleJoin} style={{ padding: '20px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-        <h2 style={{ fontFamily: 'Outfit', fontSize: '1.45rem', fontWeight: 800, color: '#fff', marginBottom: '4px' }}>
-          Sync with Pack
-        </h2>
-        <p style={{ fontSize: '0.82rem', color: '#A1A1AA', marginBottom: '24px' }}>
-          Enter the Ride credentials to connect your live map coordinates.
-        </p>
+      <form onSubmit={handleJoin} style={{ padding: '20px 20px 48px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <h2 style={{ fontFamily: 'Outfit', fontSize: '1.5rem', fontWeight: 800, color: '#F4F4F5' }}>
+              Sync with Pack
+            </h2>
+            <span className="live-dot" />
+          </div>
+          <p style={{ fontSize: '0.78rem', color: '#71717A', lineHeight: '1.5' }}>
+            Enter the Ride credentials to connect your live map coordinates.
+          </p>
+        </div>
 
-        {/* Inputs */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px' }}>
-          
+
           <div className="form-field">
             <label className="field-label">Ride ID or Invite Link</label>
             <div className="input-wrapper">
-              <span className="input-icon"><Key size={18} /></span>
-              <input 
+              <span className="input-icon"><Key size={16} /></span>
+              <input
                 className="field-input"
                 type="text"
                 placeholder="e.g. RF-260626-452"
@@ -201,23 +204,32 @@ export default function JoinRideScreen({ onShowToast }) {
                 onChange={(e) => setRideIdInput(e.target.value)}
                 onBlur={handleRideIdBlur}
                 disabled={loading}
+                style={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontFamily: 'monospace', fontSize: '0.95rem' }}
               />
             </div>
           </div>
 
-          {/* Dynamic preview loading state */}
+          {/* Preview loading */}
           {previewLoading && (
-            <div style={{ padding: '12px', fontSize: '0.8rem', color: '#F97316', textAlign: 'center' }}>
-              Retrieving ride specifications...
+            <div style={{
+              padding: '14px 16px', borderRadius: '12px',
+              background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+              fontSize: '0.8rem', color: '#F97316', fontWeight: 600,
+              display: 'flex', alignItems: 'center', gap: '8px',
+            }}>
+              <span className="live-dot" style={{ flexShrink: 0 }} />
+              Fetching ride details...
             </div>
           )}
 
           {/* Ride Preview Card */}
           {ridePreview && !previewLoading && (
-            <div className="card" style={{
-              background: ridePreview.notFound ? 'rgba(239, 68, 68, 0.04)' : 'rgba(249,115,22,0.03)',
-              borderColor: ridePreview.notFound ? 'rgba(239, 68, 68, 0.15)' : 'rgba(249,115,22,0.15)',
-              padding: '16px'
+            <div style={{
+              padding: '16px',
+              borderRadius: '14px',
+              background: ridePreview.notFound ? 'rgba(239,68,68,0.04)' : ridePreview.active ? 'rgba(249,115,22,0.04)' : 'rgba(239,68,68,0.04)',
+              border: `1px solid ${ridePreview.notFound ? 'rgba(239,68,68,0.2)' : ridePreview.active ? 'rgba(249,115,22,0.2)' : 'rgba(239,68,68,0.2)'}`,
+              borderTop: `3px solid ${ridePreview.notFound ? '#EF4444' : ridePreview.active ? '#F97316' : '#EF4444'}`,
             }}>
               {ridePreview.notFound ? (
                 <div style={{ color: '#EF4444', fontSize: '0.82rem', fontWeight: 600 }}>
@@ -229,16 +241,22 @@ export default function JoinRideScreen({ onShowToast }) {
                 </div>
               ) : (
                 <div>
-                  <span style={{ fontSize: '0.68rem', textTransform: 'uppercase', color: '#F97316', fontWeight: 800, letterSpacing: '0.8px' }}>
-                    Active Target Session
-                  </span>
-                  <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', marginTop: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#F97316', fontWeight: 800, letterSpacing: '0.8px' }}>
+                      Active Session
+                    </span>
+                    <span className="badge-pill badge-green">● LIVE</span>
+                  </div>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#F4F4F5' }}>
                     {ridePreview.title}
                   </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '10px', fontSize: '0.78rem', color: '#A1A1AA' }}>
-                    <span>🏁 <strong>Dest:</strong> {ridePreview.destinationName?.split(',')[0]}</span>
-                    <span>👤 <strong>Host:</strong> {ridePreview.hostName}</span>
-                    <span>⚡ <strong>Pace:</strong> {ridePreview.pace}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '10px', fontSize: '0.75rem', color: '#71717A' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <MapPin size={12} style={{ color: '#F97316' }} />
+                      {ridePreview.destinationName?.split(',')[0]}
+                    </span>
+                    <span>👤 Host: {ridePreview.hostName}</span>
+                    <span>⚡ Pace: {ridePreview.pace}</span>
                   </div>
                 </div>
               )}
@@ -248,8 +266,8 @@ export default function JoinRideScreen({ onShowToast }) {
           <div className="form-field">
             <label className="field-label">Your Name</label>
             <div className="input-wrapper">
-              <span className="input-icon"><User size={18} /></span>
-              <input 
+              <span className="input-icon"><User size={16} /></span>
+              <input
                 className="field-input"
                 type="text"
                 placeholder="e.g. Akshay"
@@ -264,8 +282,8 @@ export default function JoinRideScreen({ onShowToast }) {
           <div className="form-field">
             <label className="field-label">Bike Brand & Model (Optional)</label>
             <div className="input-wrapper">
-              <span className="input-icon"><Bike size={18} /></span>
-              <input 
+              <span className="input-icon"><Bike size={16} /></span>
+              <input
                 className="field-input"
                 type="text"
                 placeholder="e.g. Kawasaki Z900"
@@ -276,34 +294,30 @@ export default function JoinRideScreen({ onShowToast }) {
               />
             </div>
           </div>
-
         </div>
 
-        {/* Security check */}
+        {/* Security note */}
         <div style={{
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: '16px',
-          padding: '14px',
-          display: 'flex',
-          gap: '10px',
-          alignItems: 'center',
-          marginTop: 'auto',
-          marginBottom: '20px'
+          background: 'rgba(16,185,129,0.04)',
+          border: '1px solid rgba(16,185,129,0.15)',
+          borderRadius: '14px', padding: '14px 16px',
+          display: 'flex', gap: '10px', alignItems: 'flex-start',
+          marginTop: 'auto', marginBottom: '16px',
         }}>
-          <ShieldCheck size={20} color="#10B981" />
-          <p style={{ color: '#A1A1AA', fontSize: '0.72rem', lineHeight: '1.3' }}>
+          <ShieldCheck size={18} style={{ color: '#10B981', flexShrink: 0, marginTop: '1px' }} />
+          <p style={{ color: '#71717A', fontSize: '0.72rem', lineHeight: '1.4' }}>
             By joining, your location coordinates will sync with this ride session. Track is encrypted and deleted when finished.
           </p>
         </div>
 
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className="btn btn-primary"
+          style={{ borderRadius: '12px' }}
           disabled={loading || previewLoading || (ridePreview && (ridePreview.notFound || !ridePreview.active))}
         >
           {loading ? 'Entering HUD Session...' : 'Sync GPS & Join Pack'}
-          <Play size={14} style={{ fill: '#fff', marginLeft: '4px' }} />
+          <Play size={14} style={{ fill: '#fff' }} />
         </button>
 
       </form>

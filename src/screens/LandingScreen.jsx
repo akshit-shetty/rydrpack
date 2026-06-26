@@ -1,16 +1,13 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Navigation2, 
-  ChevronRight, 
-  Map, 
-  Shield, 
+import {
+  Navigation2,
+  ChevronRight,
+  Map,
+  Shield,
   AlertTriangle,
-  Compass,
-  Zap,
-  Activity,
-  Flame
+  UserPlus
 } from 'lucide-react';
 
 export default function LandingScreen() {
@@ -31,177 +28,221 @@ export default function LandingScreen() {
     }
   }, [navigate]);
 
+  const features = [
+    { num: '01', icon: <Map size={18} />, label: 'Live GPS' },
+    { num: '02', icon: <Shield size={18} />, label: 'Proximity' },
+    { num: '03', icon: <AlertTriangle size={18} />, label: 'SOS Radar' },
+  ];
+
   return (
-    <div 
-      className="page relative flex flex-col justify-between overflow-hidden" 
-      style={{ 
-        background: '#040406', 
+    <div
+      className="page"
+      style={{
+        background: '#070709',
+        overflowY: 'auto',
         minHeight: '100dvh',
-        padding: '20px',
-        fontFamily: "'Outfit', sans-serif"
+        padding: '0',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
-      {/* Background Interactive Navigation Grid */}
-      <div 
-        className="absolute inset-0 z-0 opacity-[0.12] pointer-events-none"
-        style={{
-          backgroundImage: `
-            linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)
-          `,
-          backgroundSize: '20px 20px'
-        }}
-      />
+      {/* Ambient top glow */}
+      <div style={{
+        position: 'absolute', top: 0, left: '50%',
+        transform: 'translateX(-50%)',
+        width: '400px', height: '300px',
+        background: 'radial-gradient(ellipse, rgba(249,115,22,0.12) 0%, transparent 70%)',
+        pointerEvents: 'none', zIndex: 0
+      }} />
 
-      {/* Cyberpunk Neon Glow Rings in Background */}
-      <div className="absolute top-[-50px] right-[-50px] w-[280px] h-[280px] bg-orange-500/10 rounded-full blur-[90px] pointer-events-none z-0" />
-      <div className="absolute bottom-[-50px] left-[-50px] w-[280px] h-[280px] bg-red-600/10 rounded-full blur-[90px] pointer-events-none z-0" />
-
-      {/* Background Winding Neon Laser Route (Weaving across screen) */}
-      <svg className="absolute inset-0 w-full h-full opacity-40 z-0 pointer-events-none" viewBox="0 0 350 700" preserveAspectRatio="none">
-        <path 
-          d="M -20 120 C 150 150, 80 320, 280 340 C 400 360, 100 500, 370 650" 
-          fill="none" 
-          stroke="url(#cockpitRouteGrad)" 
-          strokeWidth="6" 
-          strokeLinecap="round"
-          className="drop-shadow-[0_0_12px_rgba(249,115,22,0.8)]"
-        />
-        <defs>
-          <linearGradient id="cockpitRouteGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#ef4444" />
-            <stop offset="50%" stopColor="#f97316" />
-            <stop offset="100%" stopColor="#f59e0b" />
-          </linearGradient>
-        </defs>
-      </svg>
-
-      {/* ==================== 1. COCKPIT INSTRUMENT HEADER ==================== */}
-      <header className="relative z-10 w-full flex justify-between items-center bg-zinc-950/60 backdrop-blur-md border border-white/5 px-4 py-3 rounded-2xl">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/30">
-            <Navigation2 className="text-white fill-white rotate-45 w-3.5 h-3.5" />
+      {/* HEADER */}
+      <header style={{
+        position: 'relative', zIndex: 10,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '20px 24px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+          {/* Logo badge */}
+          <div style={{
+            width: '34px', height: '34px',
+            background: '#0e0e10',
+            border: '1.5px solid rgba(249,115,22,0.35)',
+            borderRadius: '10px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'relative',
+          }}>
+            <Navigation2
+              size={14}
+              style={{ color: '#F97316', fill: 'rgba(249,115,22,0.2)', transform: 'rotate(45deg) translate(-0.5px,-0.5px)' }}
+            />
+            {/* Live dot */}
+            <span style={{
+              position: 'absolute', top: '-3px', right: '-3px',
+              width: '7px', height: '7px',
+              borderRadius: '50%', background: '#F97316',
+              border: '1.5px solid #070709',
+              animation: 'pulse-ring 2.5s infinite'
+            }} />
           </div>
-          <div>
-            <span className="font-black text-sm tracking-tight text-white block">RydrPack</span>
-            <span className="text-[7.5px] text-zinc-500 tracking-widest font-extrabold uppercase leading-none">SYS: READY</span>
-          </div>
+          <span style={{
+            fontFamily: 'Outfit', fontWeight: 800, fontSize: '1.05rem',
+            color: '#F4F4F5', letterSpacing: '-0.3px'
+          }}>RydrPack</span>
         </div>
 
-        {/* Tactical status dial */}
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col text-right">
-            <span className="text-[7px] font-extrabold text-zinc-500 uppercase tracking-widest leading-none">TELEMETRY</span>
-            <span className="text-[9px] font-bold text-emerald-400 font-mono mt-0.5">ONLINE</span>
-          </div>
-          <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]" />
-        </div>
+        <button
+          onClick={() => navigate('/login')}
+          style={{
+            fontSize: '0.78rem', fontWeight: 600, color: '#A1A1AA',
+            padding: '8px 18px', borderRadius: '999px',
+            border: '1px solid rgba(255,255,255,0.08)',
+            background: 'rgba(255,255,255,0.03)',
+            cursor: 'pointer', transition: 'all 0.2s',
+            letterSpacing: '0.1px',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; }}
+          onMouseLeave={e => { e.currentTarget.style.color = '#A1A1AA'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+        >
+          Sign In
+        </button>
       </header>
 
-      {/* ==================== 2. TACTICAL SPEEDOMETER / RADAR RING ==================== */}
-      <section className="relative z-10 w-full flex flex-col items-center justify-center my-6">
-        <div className="relative w-[180px] h-[180px] rounded-full border border-white/5 bg-zinc-950/40 backdrop-blur-sm flex items-center justify-center shadow-2xl">
-          {/* Radial Sweep effect */}
-          <div 
-            className="absolute inset-2.5 rounded-full border border-dashed border-orange-500/20 animate-spin"
-            style={{ animationDuration: '12s' }}
-          />
-          <div 
-            className="absolute inset-5 rounded-full border border-double border-white/5 animate-spin"
-            style={{ animationDuration: '30s', animationDirection: 'reverse' }}
-          />
-
-          {/* Glowing central status center */}
-          <div className="text-center flex flex-col items-center">
-            <Compass className="w-6 h-6 text-orange-500 animate-pulse mb-1.5" />
-            <span className="text-[9px] font-extrabold text-zinc-500 tracking-widest uppercase">COHORT GPS</span>
-            <h2 className="text-[2.2rem] font-black text-white font-mono leading-none tracking-tighter mt-1">
-              82<span className="text-[10px] font-bold text-zinc-400 font-sans ml-1">km/h</span>
-            </h2>
-            <span className="text-[7.5px] font-bold text-zinc-400 bg-white/5 px-2 py-0.5 rounded-full border border-white/5 mt-1.5">
-              5 RIDERS ACTIVE
+      {/* HERO TEXT */}
+      <main style={{
+        position: 'relative', zIndex: 10,
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        textAlign: 'center', padding: '8px 28px 0',
+      }}>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.05 }}
+        >
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.18)',
+            borderRadius: '999px', padding: '4px 12px', marginBottom: '16px',
+          }}>
+            <span className="live-dot" style={{ width: '5px', height: '5px' }} />
+            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#F97316', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+              Real-Time Pack Sync
             </span>
           </div>
 
-          {/* Compass labels around ring */}
-          <span className="absolute top-2 text-[8px] font-bold text-zinc-600">N</span>
-          <span className="absolute bottom-2 text-[8px] font-bold text-zinc-600">S</span>
-          <span className="absolute left-2.5 text-[8px] font-bold text-zinc-600">W</span>
-          <span className="absolute right-2.5 text-[8px] font-bold text-zinc-600">E</span>
-        </div>
-      </section>
+          <h1 style={{
+            fontFamily: 'Outfit', fontSize: '2.4rem', lineHeight: 1.08,
+            fontWeight: 900, color: '#fff', letterSpacing: '-1px',
+            textTransform: 'uppercase',
+          }}>
+            Ride Together.<br />
+            <span style={{
+              background: 'linear-gradient(135deg, #F97316, #ff5f00)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            }}>
+              Stay Together.
+            </span>
+          </h1>
 
-      {/* ==================== 3. FLOATING MAIN CONTROL GLASS DECK ==================== */}
-      <main className="relative z-10 w-full bg-gradient-to-b from-zinc-900/80 to-zinc-950/95 backdrop-blur-xl border border-white/10 rounded-[28px] p-5 shadow-2xl shadow-black/80 flex flex-col items-center text-center">
-        {/* Core Tagline Pill */}
-        <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30 px-3 py-1 rounded-full text-[9px] font-extrabold text-orange-400 tracking-wider uppercase mb-4">
-          <Activity className="w-3.5 h-3.5 text-orange-500" />
-          <span>PROXIMITY RADAR v2.0</span>
-        </div>
-
-        {/* Title */}
-        <h1 className="font-['Outfit'] text-[2.1rem] leading-[1.05] font-black text-white tracking-tight uppercase">
-          RIDE TOGETHER.<br/>
-          <span className="bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent">STAY TOGETHER.</span>
-        </h1>
-
-        {/* Subtitle */}
-        <p className="text-zinc-400 text-xs mt-3.5 leading-relaxed max-w-[280px] font-semibold">
-          Secure your pack. Real-time telemetry sync, auto-lagging warnings, and instantaneous SOS broadcasting.
-        </p>
-
-        {/* Vertical Separator Grid */}
-        <div className="grid grid-cols-3 gap-3 w-full border-t border-b border-white/5 my-5 py-4">
-          <div className="flex flex-col items-center">
-            <span className="text-[10px] font-black text-orange-500 uppercase tracking-wide">Live Telemetry</span>
-            <span className="text-[8px] text-zinc-500 font-extrabold mt-1">ZERO LATENCY</span>
-          </div>
-          <div className="flex flex-col items-center border-l border-r border-white/5">
-            <span className="text-[10px] font-black text-orange-500 uppercase tracking-wide">Auto Alerts</span>
-            <span className="text-[8px] text-zinc-500 font-extrabold mt-1">PROXIMITY SCAN</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="text-[10px] font-black text-orange-500 uppercase tracking-wide">Radar SOS</span>
-            <span className="text-[8px] text-zinc-500 font-extrabold mt-1">INSTANT PING</span>
-          </div>
-        </div>
-
-        {/* Biker Stack Visualizer */}
-        <div className="flex items-center gap-2 mb-2">
-          <div className="flex -space-x-2">
-            <div className="w-6 h-6 rounded-full bg-orange-500 border border-zinc-950 flex items-center justify-center text-[7.5px] font-bold text-white uppercase">AS</div>
-            <div className="w-6 h-6 rounded-full bg-zinc-700 border border-zinc-950 flex items-center justify-center text-[7.5px] font-bold text-white uppercase">JD</div>
-            <div className="w-6 h-6 rounded-full bg-amber-500 border border-zinc-950 flex items-center justify-center text-[7.5px] font-bold text-black uppercase">LK</div>
-          </div>
-          <span className="text-[9px] font-extrabold text-zinc-400 uppercase tracking-wider">
-            Linked to Supabase Central Database
-          </span>
-        </div>
+          <p style={{
+            color: '#71717A', fontSize: '0.82rem', marginTop: '12px',
+            maxWidth: '260px', lineHeight: '1.6', fontWeight: 400,
+          }}>
+            The ultimate real-time navigation and safety assistant for group motorcycle rides.
+          </p>
+        </motion.div>
       </main>
 
-      {/* ==================== 4. TACTICAL TRIGGER PANEL (IGNITION) ==================== */}
-      <footer className="relative z-10 w-full flex flex-col gap-3 mt-5">
-        {/* Engine Start/Ignition CTA Button */}
-        <motion.button 
-          whileTap={{ scale: 0.98 }}
-          onClick={() => navigate('/onboarding')} 
-          className="w-full py-4.5 px-6 bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 hover:brightness-110 active:brightness-95 text-white font-black rounded-2xl shadow-xl shadow-orange-500/25 active:scale-[0.98] transition-all text-xs font-['Outfit'] uppercase tracking-widest flex items-center justify-center gap-2 border-t border-white/20"
+      {/* HERO IMAGE */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.65, delay: 0.15 }}
+        style={{
+          position: 'relative', zIndex: 10,
+          margin: '20px 24px',
+          borderRadius: '20px',
+          overflow: 'hidden',
+          border: '1px solid rgba(255,255,255,0.06)',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.7)',
+          aspectRatio: '4/3',
+          background: '#0e0e10',
+        }}
+      >
+        <img
+          src="/group_riders.png"
+          alt="Group of Riders in Sequence"
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: 0.92 }}
+        />
+        {/* Bottom fade */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(to top, #070709 0%, transparent 55%)',
+          pointerEvents: 'none',
+        }} />
+      </motion.div>
+
+      {/* FEATURE CARDS */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.25 }}
+        style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+          gap: '10px', padding: '0 24px', zIndex: 10, position: 'relative',
+        }}
+      >
+        {features.map((f) => (
+          <div key={f.num} style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            gap: '10px', padding: '20px 8px',
+            background: 'rgba(255,255,255,0.02)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: '16px',
+            position: 'relative',
+          }}>
+            <span style={{
+              position: 'absolute', top: '10px', left: '10px',
+              fontSize: '0.6rem', fontWeight: 800, color: 'rgba(249,115,22,0.4)',
+              fontFamily: 'Outfit', letterSpacing: '0.5px',
+            }}>{f.num}</span>
+            <div style={{ color: 'rgba(249,115,22,0.85)' }}>{f.icon}</div>
+            <span style={{
+              fontSize: '0.68rem', fontWeight: 700,
+              color: '#A1A1AA', textTransform: 'uppercase', letterSpacing: '0.5px',
+              textAlign: 'center',
+            }}>{f.label}</span>
+          </div>
+        ))}
+      </motion.div>
+
+      {/* CTA */}
+      <footer style={{
+        position: 'relative', zIndex: 10,
+        display: 'flex', flexDirection: 'column', gap: '12px',
+        padding: '20px 24px 36px',
+        marginTop: 'auto',
+      }}>
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => navigate('/onboarding')}
+          className="btn btn-primary"
+          style={{
+            borderRadius: '14px', fontSize: '0.88rem',
+            fontWeight: 700, letterSpacing: '0.2px',
+            padding: '17px 24px',
+          }}
         >
-          <Flame className="w-4 h-4 text-white fill-white animate-pulse" />
-          START ENGINE (CREATE PROFILE)
-          <ChevronRight className="w-4 h-4" />
+          <UserPlus size={17} />
+          Create Rider Profile
+          <ChevronRight size={16} />
         </motion.button>
 
-        {/* Access login */}
-        <button 
-          onClick={() => navigate('/login')}
-          className="w-full py-3.5 px-6 bg-zinc-950/40 hover:bg-zinc-950/80 border border-white/5 text-zinc-300 hover:text-white font-bold rounded-2xl text-xs font-['Outfit'] uppercase tracking-widest transition-all"
-        >
-          Rider Console Login
-        </button>
-
-        <p className="text-[7.5px] text-zinc-600 text-center font-extrabold uppercase tracking-widest mt-1">
-          RydrPack Tactical Instrument Cluster • Build v2.0
+        <p style={{
+          fontSize: '0.65rem', color: '#3F3F46',
+          textAlign: 'center', fontWeight: 600,
+          textTransform: 'uppercase', letterSpacing: '1.5px',
+        }}>
+          RydrPack · v2.0
         </p>
       </footer>
     </div>

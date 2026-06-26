@@ -51,111 +51,99 @@ export default function PostRideScreen({ onShowToast }) {
     }
   };
 
+  const statCards = [
+    { icon: <Milestone size={18} />, label: 'Distance', value: `${summary.distance.toFixed(1)} km`, color: '#F97316' },
+    { icon: <Clock size={18} />, label: 'Duration', value: formatDuration(summary.duration), color: '#0EA5E9' },
+    { icon: <Activity size={18} />, label: 'Avg Speed', value: `${summary.avgSpeed} km/h`, color: '#10B981' },
+    { icon: <Trophy size={18} />, label: 'Top Speed', value: `${summary.topSpeed} km/h`, color: '#A78BFA' },
+  ];
+
   return (
     <div className="page" style={{ background: '#09090b', overflowY: 'auto' }}>
       <Header title="Ride Summary" showMenu={false} />
 
-      <div style={{ padding: '24px 20px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        
-        {/* Trophy visual */}
-        <div style={{
-          width: '80px',
-          height: '80px',
-          borderRadius: '50%',
-          background: 'rgba(249, 115, 22, 0.1)',
-          border: '2px solid rgba(249, 115, 22, 0.25)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#F97316',
-          boxShadow: '0 8px 24px rgba(249, 115, 22, 0.2)',
-          marginBottom: '20px',
-          marginTop: '10px'
-        }}>
-          <Trophy size={40} />
+      <div style={{ padding: '16px 20px 48px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+
+        {/* Trophy with animated ring */}
+        <div style={{ position: 'relative', marginTop: '10px', marginBottom: '20px' }}>
+          {/* Outer rotating gradient ring */}
+          <div style={{
+            position: 'absolute', inset: '-10px',
+            borderRadius: '50%',
+            border: '2px solid transparent',
+            backgroundImage: 'conic-gradient(#F97316, #ff5f00, transparent, transparent)',
+            animation: 'spin-slow 4s linear infinite',
+            WebkitMask: 'radial-gradient(farthest-side, transparent 60%, #000 61%)',
+          }} />
+          {/* Inner circle */}
+          <div style={{
+            width: '80px', height: '80px', borderRadius: '50%',
+            background: 'rgba(249,115,22,0.08)',
+            border: '1.5px solid rgba(249,115,22,0.25)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#F97316',
+          }}>
+            <Trophy size={38} />
+          </div>
         </div>
 
-        <h2 style={{ fontFamily: 'Outfit', fontSize: '1.65rem', fontWeight: 900, textAlign: 'center', color: '#fff' }}>
+        <h2 style={{ fontFamily: 'Outfit', fontSize: '1.7rem', fontWeight: 900, textAlign: 'center', color: '#fff', letterSpacing: '-0.5px' }}>
           Ride Accomplished!
         </h2>
-        <p style={{ fontSize: '0.82rem', color: '#A1A1AA', textAlign: 'center', marginTop: '4px' }}>
+        <p style={{ fontSize: '0.78rem', color: '#71717A', textAlign: 'center', marginTop: '6px', lineHeight: '1.5' }}>
           You completed the ride successfully with your pack.
         </p>
 
         {/* Stats Grid */}
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '12px',
-          width: '100%',
-          marginTop: '28px',
-          marginBottom: '24px'
+          display: 'grid', gridTemplateColumns: '1fr 1fr',
+          gap: '10px', width: '100%',
+          marginTop: '28px', marginBottom: '18px',
         }}>
-          
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: 0, padding: '16px' }}>
-            <Milestone size={18} color="#F97316" />
-            <span style={{ fontSize: '0.72rem', color: '#52525B', textTransform: 'uppercase', fontWeight: 700 }}>Distance</span>
-            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff' }}>{summary.distance.toFixed(1)} km</span>
-          </div>
-
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: 0, padding: '16px' }}>
-            <Clock size={18} color="#0EA5E9" />
-            <span style={{ fontSize: '0.72rem', color: '#52525B', textTransform: 'uppercase', fontWeight: 700 }}>Duration</span>
-            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff' }}>{formatDuration(summary.duration)}</span>
-          </div>
-
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: 0, padding: '16px' }}>
-            <Activity size={18} color="#10B981" />
-            <span style={{ fontSize: '0.72rem', color: '#52525B', textTransform: 'uppercase', fontWeight: 700 }}>Average Speed</span>
-            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff' }}>{summary.avgSpeed} km/h</span>
-          </div>
-
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: 0, padding: '16px' }}>
-            <Trophy size={18} color="#A78BFA" />
-            <span style={{ fontSize: '0.72rem', color: '#52525B', textTransform: 'uppercase', fontWeight: 700 }}>Top Speed</span>
-            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff' }}>{summary.topSpeed} km/h</span>
-          </div>
-
+          {statCards.map((s, idx) => (
+            <div key={idx} className="card" style={{
+              display: 'flex', flexDirection: 'column', gap: '8px',
+              marginBottom: 0, padding: '16px 18px',
+              borderTop: `2px solid ${s.color}33`,
+            }}>
+              <span style={{ color: s.color }}>{s.icon}</span>
+              <span style={{ fontSize: '0.68rem', color: '#52525B', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>{s.label}</span>
+              <span style={{ fontFamily: 'Outfit', fontSize: '1.25rem', fontWeight: 800, color: '#F4F4F5' }}>{s.value}</span>
+            </div>
+          ))}
         </div>
 
         {/* Badge Card */}
         <div className="card" style={{
           width: '100%',
-          background: 'rgba(167, 139, 250, 0.03)',
-          borderColor: 'rgba(167, 139, 250, 0.15)',
-          display: 'flex',
-          gap: '14px',
-          alignItems: 'center',
-          padding: '16px',
-          marginBottom: '28px'
+          background: 'rgba(167,139,250,0.04)',
+          borderColor: 'rgba(167,139,250,0.18)',
+          borderTop: '2px solid rgba(167,139,250,0.3)',
+          display: 'flex', gap: '14px', alignItems: 'center',
+          padding: '16px 18px', marginBottom: '24px',
         }}>
           <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '10px',
-            background: 'rgba(167, 139, 250, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#A78BFA'
+            width: '44px', height: '44px', borderRadius: '12px', flexShrink: 0,
+            background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#A78BFA',
           }}>
             <Award size={22} />
           </div>
           <div>
-            <h4 style={{ fontSize: '0.88rem', fontWeight: 800, color: '#fff' }}>Pack Integrator Badge</h4>
-            <p style={{ color: '#A1A1AA', fontSize: '0.72rem', marginTop: '2px', lineHeight: '1.3' }}>
-              Successfully rode with {summary.ridersJoined} pack members. Badge synchronised with profile.
+            <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#F4F4F5' }}>Pack Integrator Badge</h4>
+            <p style={{ color: '#71717A', fontSize: '0.72rem', marginTop: '3px', lineHeight: '1.4' }}>
+              Successfully rode with {summary.ridersJoined} pack members. Badge synced with profile.
             </p>
           </div>
         </div>
 
-        {/* Action button triggers */}
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <button className="btn btn-primary" onClick={handleShareStory}>
-            <Share2 size={16} /> Share Ride Story Card
+        {/* Action buttons */}
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <button className="btn btn-primary" onClick={handleShareStory} style={{ borderRadius: '12px' }}>
+            <Share2 size={16} /> Share Ride Story
           </button>
-
-          <button className="btn btn-secondary" onClick={() => navigate('/dashboard')}>
+          <button className="btn btn-secondary" onClick={() => navigate('/dashboard')} style={{ borderRadius: '12px' }}>
             <Home size={16} /> Return to Dashboard
           </button>
         </div>

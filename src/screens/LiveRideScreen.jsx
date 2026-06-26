@@ -23,6 +23,7 @@ export default function LiveRideScreen({ onShowToast }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showRidersOverlay, setShowRidersOverlay] = useState(false);
   const [showDetailsOverlay, setShowDetailsOverlay] = useState(false);
+  const [showEndRideModal, setShowEndRideModal] = useState(false);
   const [mapStyle, setMapStyle] = useState('dark'); // Dark style premium standard
   const [isCentered, setIsCentered] = useState(true);
   const [laggingRider, setLaggingRider] = useState(null); // Alert display packet
@@ -360,15 +361,13 @@ export default function LiveRideScreen({ onShowToast }) {
     }
   };
 
-  const handleEndRide = async () => {
+  const handleEndRide = () => {
     setIsMenuOpen(false);
-    const hostConfirm = window.confirm(
-      session.isHost 
-        ? 'Are you sure you want to end this ride for everyone? Final ride stats will be saved to your profile database.'
-        : 'Are you sure you want to leave this group ride?'
-    );
+    setShowEndRideModal(true);
+  };
 
-    if (!hostConfirm) return;
+  const confirmEndRide = async () => {
+    setShowEndRideModal(false);
 
     try {
       if (session.isHost) {
@@ -957,6 +956,79 @@ export default function LiveRideScreen({ onShowToast }) {
             <button className="btn btn-secondary" onClick={() => setShowDetailsOverlay(false)} style={{ width: '100%' }}>
               Close Information
             </button>
+          </div>
+        </>
+      )}
+
+      {/* END RIDE CONFIRMATION MODAL */}
+      {showEndRideModal && (
+        <>
+          <div
+            className="sidebar-overlay"
+            onClick={() => setShowEndRideModal(false)}
+            style={{ zIndex: 1050 }}
+          />
+          <div style={{
+            position: 'fixed',
+            bottom: 0,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '100%',
+            maxWidth: '430px',
+            background: '#111113',
+            borderTopLeftRadius: '24px',
+            borderTopRightRadius: '24px',
+            borderTop: '1px solid rgba(255,255,255,0.08)',
+            zIndex: 1051,
+            padding: '28px 24px 36px',
+            boxSizing: 'border-box',
+            animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}>
+            <div style={{ width: '40px', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', margin: '0 auto 24px' }} />
+
+            <div style={{
+              width: '52px', height: '52px', borderRadius: '50%',
+              background: 'rgba(239,68,68,0.10)',
+              border: '1.5px solid rgba(239,68,68,0.25)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 16px',
+            }}>
+              <AlertOctagon size={24} style={{ color: '#EF4444' }} />
+            </div>
+
+            <h3 style={{
+              fontFamily: 'Outfit', fontSize: '1.2rem', fontWeight: 800,
+              color: '#fff', textAlign: 'center', marginBottom: '8px',
+            }}>
+              {session.isHost ? 'End Ride for Everyone?' : 'Leave Group Ride?'}
+            </h3>
+
+            <p style={{
+              color: '#71717A', fontSize: '0.8rem', textAlign: 'center',
+              lineHeight: '1.5', marginBottom: '24px',
+            }}>
+              {session.isHost
+                ? 'This will end the session for all riders. Your ride stats will be saved to your profile.'
+                : 'You will be disconnected from the group map. The ride will continue without you.'}
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                onClick={confirmEndRide}
+                className="btn btn-danger"
+                style={{ borderRadius: '12px' }}
+              >
+                <AlertOctagon size={16} />
+                {session.isHost ? 'Yes, End Ride Session' : 'Yes, Leave Group'}
+              </button>
+              <button
+                onClick={() => setShowEndRideModal(false)}
+                className="btn btn-secondary"
+                style={{ borderRadius: '12px' }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </>
       )}
