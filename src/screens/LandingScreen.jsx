@@ -94,7 +94,7 @@ export default function LandingScreen() {
       <main style={{
         position: 'relative', zIndex: 10,
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        textAlign: 'center', padding: '36px 20px 0',
+        textAlign: 'center', padding: '60px 20px 0',
       }}>
         <motion.div
           initial={{ opacity: 0, y: 16 }}
