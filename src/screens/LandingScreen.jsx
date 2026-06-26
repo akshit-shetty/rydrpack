@@ -102,6 +102,7 @@ export default function LandingScreen() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.05 }}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
         >
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -115,7 +116,7 @@ export default function LandingScreen() {
           </div>
 
           <h1 style={{
-            fontFamily: 'Outfit', fontSize: '2.4rem', lineHeight: 1.08,
+            fontFamily: 'Outfit', fontSize: '2.1rem', lineHeight: 1.08,
             fontWeight: 900, color: '#fff', letterSpacing: '-1px',
             textTransform: 'uppercase',
           }}>
@@ -129,8 +130,9 @@ export default function LandingScreen() {
           </h1>
 
           <p style={{
-            color: '#71717A', fontSize: '0.82rem', marginTop: '12px',
+            color: '#71717A', fontSize: '0.82rem', margin: '12px auto 0',
             maxWidth: '260px', lineHeight: '1.6', fontWeight: 400,
+            textAlign: 'center'
           }}>
             The ultimate real-time navigation and safety assistant for group motorcycle rides.
           </p>
