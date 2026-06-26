@@ -66,23 +66,21 @@ export default function LandingScreen() {
           {/* Logo badge */}
           <div style={{
             width: '34px', height: '34px',
-            background: '#0e0e10',
-            border: '1.5px solid rgba(249,115,22,0.35)',
+            border: '1.5px solid rgba(249,115,22,0.2)',
             borderRadius: '10px',
+            overflow: 'hidden',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             position: 'relative',
           }}>
-            <Navigation2
-              size={14}
-              style={{ color: '#F97316', fill: 'rgba(249,115,22,0.2)', transform: 'rotate(45deg) translate(-0.5px,-0.5px)' }}
-            />
+            <img src="/rydrpack_logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             {/* Live dot */}
             <span style={{
-              position: 'absolute', top: '-3px', right: '-3px',
+              position: 'absolute', top: '-1px', right: '-1px',
               width: '7px', height: '7px',
               borderRadius: '50%', background: '#F97316',
               border: '1.5px solid #070709',
-              animation: 'pulse-ring 2.5s infinite'
+              animation: 'pulse-ring 2.5s infinite',
+              zIndex: 2,
             }} />
           </div>
           <span style={{

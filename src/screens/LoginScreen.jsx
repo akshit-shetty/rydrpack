@@ -115,11 +115,12 @@ export default function LoginScreen({ onShowToast }) {
       }}>
         <div style={{
           width: '32px', height: '32px',
-          background: '#0e0e10', border: '1.5px solid rgba(249,115,22,0.35)',
+          border: '1.5px solid rgba(249,115,22,0.2)',
           borderRadius: '8px',
+          overflow: 'hidden',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <Navigation2 size={13} style={{ color: '#F97316', fill: 'rgba(249,115,22,0.15)', transform: 'rotate(45deg) translate(-0.5px,-0.5px)' }} />
+          <img src="/rydrpack_logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
         <span style={{
           fontFamily: 'Outfit', fontWeight: 800, fontSize: '0.95rem',
