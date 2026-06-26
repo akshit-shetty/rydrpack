@@ -40,7 +40,7 @@ export default function LandingScreen() {
       className="page"
       style={{
         background: '#070709',
-        overflowY: 'auto',
+        overflowY: 'hidden',
         minHeight: '100dvh',
         padding: '0',
         display: 'flex',
@@ -60,7 +60,7 @@ export default function LandingScreen() {
       <header style={{
         position: 'relative', zIndex: 10,
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '20px 24px',
+        padding: '12px 20px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
           {/* Logo badge */}
@@ -96,7 +96,7 @@ export default function LandingScreen() {
       <main style={{
         position: 'relative', zIndex: 10,
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        textAlign: 'center', padding: '8px 28px 0',
+        textAlign: 'center', padding: '4px 20px 0',
       }}>
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -146,12 +146,12 @@ export default function LandingScreen() {
         transition={{ duration: 0.65, delay: 0.15 }}
         style={{
           position: 'relative', zIndex: 10,
-          margin: '20px 24px',
-          borderRadius: '20px',
+          margin: '10px 24px',
+          borderRadius: '16px',
           overflow: 'hidden',
           border: '1px solid rgba(255,255,255,0.06)',
-          boxShadow: '0 20px 50px rgba(0,0,0,0.7)',
-          aspectRatio: '4/3',
+          boxShadow: '0 12px 30px rgba(0,0,0,0.7)',
+          height: '120px',
           background: '#0e0e10',
         }}
       >
@@ -181,14 +181,14 @@ export default function LandingScreen() {
         {features.map((f) => (
           <div key={f.num} style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center',
-            gap: '10px', padding: '20px 8px',
+            gap: '6px', padding: '10px 8px',
             background: 'rgba(255,255,255,0.02)',
             border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: '16px',
+            borderRadius: '12px',
             position: 'relative',
           }}>
             <span style={{
-              position: 'absolute', top: '10px', left: '10px',
+              position: 'absolute', top: '8px', left: '8px',
               fontSize: '0.6rem', fontWeight: 800, color: 'rgba(249,115,22,0.4)',
               fontFamily: 'Outfit', letterSpacing: '0.5px',
             }}>{f.num}</span>
@@ -205,8 +205,8 @@ export default function LandingScreen() {
       {/* CTA */}
       <footer style={{
         position: 'relative', zIndex: 10,
-        display: 'flex', flexDirection: 'column', gap: '12px',
-        padding: '20px 24px 36px',
+        display: 'flex', flexDirection: 'column', gap: '8px',
+        padding: '12px 24px 20px',
         marginTop: 'auto',
       }}>
         <motion.button
@@ -216,7 +216,7 @@ export default function LandingScreen() {
           style={{
             borderRadius: '14px', fontSize: '0.88rem',
             fontWeight: 700, letterSpacing: '0.2px',
-            padding: '17px 24px',
+            padding: '13px 24px',
           }}
         >
           <UserPlus size={17} />
@@ -231,7 +231,7 @@ export default function LandingScreen() {
           style={{
             borderRadius: '14px', fontSize: '0.88rem',
             fontWeight: 700, letterSpacing: '0.2px',
-            padding: '17px 24px',
+            padding: '13px 24px',
           }}
         >
           <LogIn size={17} />
@@ -243,7 +243,7 @@ export default function LandingScreen() {
           fontSize: '0.65rem', color: '#3F3F46',
           textAlign: 'center', fontWeight: 600,
           textTransform: 'uppercase', letterSpacing: '1.5px',
-          marginTop: '8px'
+          marginTop: '6px'
         }}>
           RydrPack · v2.0
         </p>

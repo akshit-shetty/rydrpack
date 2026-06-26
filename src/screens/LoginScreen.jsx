@@ -86,6 +86,7 @@ export default function LoginScreen({ onShowToast }) {
       style={{
         background: 'radial-gradient(ellipse 80% 50% at 50% 0%, #1a0e06 0%, #09090b 55%)',
         display: 'flex', flexDirection: 'column',
+        overflowY: 'hidden',
       }}
     >
       {/* Top ambient glow */}
@@ -96,35 +97,32 @@ export default function LoginScreen({ onShowToast }) {
         pointerEvents: 'none', zIndex: 0
       }} />
 
-      {/* Back button row */}
+      {/* Back button row (floating absolute) */}
       <div style={{
-        position: 'relative', zIndex: 10,
-        display: 'flex', alignItems: 'center',
-        padding: '20px 20px 0',
+        position: 'absolute', top: '16px', left: '16px', zIndex: 100,
       }}>
-        <button className="icon-btn" onClick={() => navigate('/')} disabled={loading}>
-          <ArrowLeft size={17} />
+        <button className="icon-btn" onClick={() => navigate('/')} disabled={loading} style={{ width: '36px', height: '36px' }}>
+          <ArrowLeft size={15} />
         </button>
       </div>
 
-      {/* Brand mark */}
+      {/* Brand mark (horizontal & compact) */}
       <div style={{
         position: 'relative', zIndex: 10,
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        padding: '28px 20px 8px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '24px 20px 0',
         gap: '8px',
       }}>
         <div style={{
-          width: '48px', height: '48px',
+          width: '32px', height: '32px',
           background: '#0e0e10', border: '1.5px solid rgba(249,115,22,0.35)',
-          borderRadius: '14px',
+          borderRadius: '8px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 0 20px rgba(249,115,22,0.08)',
         }}>
-          <Navigation2 size={20} style={{ color: '#F97316', fill: 'rgba(249,115,22,0.15)', transform: 'rotate(45deg) translate(-1px,-1px)' }} />
+          <Navigation2 size={13} style={{ color: '#F97316', fill: 'rgba(249,115,22,0.15)', transform: 'rotate(45deg) translate(-0.5px,-0.5px)' }} />
         </div>
         <span style={{
-          fontFamily: 'Outfit', fontWeight: 800, fontSize: '1.1rem',
+          fontFamily: 'Outfit', fontWeight: 800, fontSize: '0.95rem',
           color: '#F4F4F5', letterSpacing: '-0.3px'
         }}>RydrPack</span>
       </div>
@@ -133,7 +131,7 @@ export default function LoginScreen({ onShowToast }) {
       <form
         onSubmit={handleLogin}
         style={{
-          padding: '20px 20px 40px', flex: 1,
+          padding: '10px 20px 20px', flex: 1,
           display: 'flex', flexDirection: 'column',
           justifyContent: 'center', position: 'relative', zIndex: 10,
         }}
@@ -145,28 +143,28 @@ export default function LoginScreen({ onShowToast }) {
             backdropFilter: 'blur(20px)',
             border: '1px solid rgba(255,255,255,0.07)',
             borderTop: '2px solid rgba(249,115,22,0.35)',
-            padding: '28px 24px',
-            borderRadius: '24px',
-            boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
+            padding: '16px 18px',
+            borderRadius: '16px',
+            boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
             display: 'flex', flexDirection: 'column',
             marginBottom: 0,
           }}
         >
           {/* Heading */}
-          <div style={{ marginBottom: '24px' }}>
-            <h2 style={{ fontFamily: 'Outfit', fontSize: '1.6rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>
+          <div style={{ marginBottom: '10px' }}>
+            <h2 style={{ fontFamily: 'Outfit', fontSize: '1.25rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>
               Welcome Back
             </h2>
-            <p style={{ fontSize: '0.78rem', color: '#71717A', marginTop: '6px', lineHeight: '1.5' }}>
+            <p style={{ fontSize: '0.74rem', color: '#71717A', marginTop: '3px', lineHeight: '1.4' }}>
               Enter your credentials to access your rider profile.
             </p>
           </div>
 
           {/* Email field */}
-          <div className="form-field" style={{ marginBottom: '14px' }}>
+          <div className="form-field" style={{ marginBottom: '8px' }}>
             <label className="field-label">Email Address</label>
             <div className="input-wrapper">
-              <span className="input-icon"><Mail size={16} /></span>
+              <span className="input-icon" style={{ left: '12px' }}><Mail size={14} /></span>
               <input
                 className="field-input"
                 type="email"
@@ -175,15 +173,16 @@ export default function LoginScreen({ onShowToast }) {
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
                 autoComplete="email"
+                style={{ padding: '11px 14px 11px 38px', fontSize: '0.85rem' }}
               />
             </div>
           </div>
 
           {/* Password field */}
-          <div className="form-field" style={{ marginBottom: '20px' }}>
+          <div className="form-field" style={{ marginBottom: '12px' }}>
             <label className="field-label">Password</label>
             <div className="input-wrapper">
-              <span className="input-icon"><Lock size={16} /></span>
+              <span className="input-icon" style={{ left: '12px' }}><Lock size={14} /></span>
               <input
                 className="field-input"
                 type="password"
@@ -192,6 +191,7 @@ export default function LoginScreen({ onShowToast }) {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
                 autoComplete="current-password"
+                style={{ padding: '11px 14px 11px 38px', fontSize: '0.85rem' }}
               />
             </div>
           </div>
@@ -200,17 +200,17 @@ export default function LoginScreen({ onShowToast }) {
           <button
             type="submit"
             className="btn btn-primary"
-            style={{ borderRadius: '12px', fontSize: '0.9rem', fontWeight: 700 }}
+            style={{ borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, padding: '12px 20px' }}
             disabled={loading || !email.trim() || !password.trim()}
           >
             {loading ? 'Authenticating...' : 'Sign In'}
-            <LogIn size={16} />
+            <LogIn size={15} />
           </button>
 
           {/* Caption */}
           <p style={{
             textAlign: 'center', fontSize: '0.72rem',
-            color: '#3F3F46', marginTop: '14px',
+            color: '#3F3F46', marginTop: '10px',
             lineHeight: '1.5',
           }}>
             🔒 Your credentials are stored locally and synced securely.
@@ -219,7 +219,7 @@ export default function LoginScreen({ onShowToast }) {
           {/* Sign up link */}
           <p style={{
             textAlign: 'center', fontSize: '0.82rem',
-            color: '#52525B', marginTop: '18px',
+            color: '#52525B', marginTop: '12px',
           }}>
             No account yet?{' '}
             <span
