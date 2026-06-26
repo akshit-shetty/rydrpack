@@ -94,7 +94,7 @@ export default function LandingScreen() {
       <main style={{
         position: 'relative', zIndex: 10,
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        textAlign: 'center', padding: '24px 20px 0',
+        textAlign: 'center', padding: '36px 20px 0',
       }}>
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -102,17 +102,6 @@ export default function LandingScreen() {
           transition={{ duration: 0.55, delay: 0.05 }}
           style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
         >
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.18)',
-            borderRadius: '999px', padding: '4px 12px', marginBottom: '16px',
-          }}>
-            <span className="live-dot" style={{ width: '5px', height: '5px' }} />
-            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#F97316', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-              Real-Time Pack Sync
-            </span>
-          </div>
-
           <h1 style={{
             fontFamily: 'Outfit', fontSize: '2.1rem', lineHeight: 1.08,
             fontWeight: 900, color: '#fff', letterSpacing: '-1px',
