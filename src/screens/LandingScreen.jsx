@@ -7,7 +7,8 @@ import {
   Map,
   Shield,
   AlertTriangle,
-  UserPlus
+  UserPlus,
+  LogIn
 } from 'lucide-react';
 
 export default function LandingScreen() {
@@ -89,22 +90,6 @@ export default function LandingScreen() {
             color: '#F4F4F5', letterSpacing: '-0.3px'
           }}>RydrPack</span>
         </div>
-
-        <button
-          onClick={() => navigate('/login')}
-          style={{
-            fontSize: '0.78rem', fontWeight: 600, color: '#A1A1AA',
-            padding: '8px 18px', borderRadius: '999px',
-            border: '1px solid rgba(255,255,255,0.08)',
-            background: 'rgba(255,255,255,0.03)',
-            cursor: 'pointer', transition: 'all 0.2s',
-            letterSpacing: '0.1px',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.18)'; }}
-          onMouseLeave={e => { e.currentTarget.style.color = '#A1A1AA'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
-        >
-          Sign In
-        </button>
       </header>
 
       {/* HERO TEXT */}
@@ -233,7 +218,22 @@ export default function LandingScreen() {
           }}
         >
           <UserPlus size={17} />
-          Create Rider Profile
+          Create Ryder Profile
+          <ChevronRight size={16} />
+        </motion.button>
+
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => navigate('/login')}
+          className="btn btn-primary"
+          style={{
+            borderRadius: '14px', fontSize: '0.88rem',
+            fontWeight: 700, letterSpacing: '0.2px',
+            padding: '17px 24px',
+          }}
+        >
+          <LogIn size={17} />
+          Already a Rydr?
           <ChevronRight size={16} />
         </motion.button>
 
@@ -241,6 +241,7 @@ export default function LandingScreen() {
           fontSize: '0.65rem', color: '#3F3F46',
           textAlign: 'center', fontWeight: 600,
           textTransform: 'uppercase', letterSpacing: '1.5px',
+          marginTop: '8px'
         }}>
           RydrPack · v2.0
         </p>
