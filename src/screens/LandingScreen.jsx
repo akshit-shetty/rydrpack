@@ -218,7 +218,7 @@ export default function LandingScreen() {
           }}
         >
           <UserPlus size={17} />
-          Create Ryder Profile
+          Create Rydr Profile
           <ChevronRight size={16} />
         </motion.button>
 
