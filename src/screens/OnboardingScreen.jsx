@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, Heart, Bike, Compass, ShieldAlert, Lock, ChevronRight, ChevronLeft, ShieldCheck } from 'lucide-react';
-import Header from '../components/Header';
+import { User, Mail, Phone, Heart, Bike, Compass, ShieldAlert, Lock, ChevronRight, ChevronLeft, ShieldCheck, ArrowLeft, Navigation2 } from 'lucide-react';
 import { supabase } from '../supabase';
 
 export default function OnboardingScreen({ onShowToast }) {
@@ -298,7 +297,36 @@ export default function OnboardingScreen({ onShowToast }) {
 
   return (
     <div className="page" style={{ background: 'radial-gradient(ellipse 80% 50% at 50% 0%, #1a0e06 0%, #09090b 55%)', display: 'flex', flexDirection: 'column' }}>
-      <Header title="RydrPack Profile" showMenu={false} />
+      {/* Back button row (floating absolute) */}
+      <div style={{
+        position: 'absolute', top: '16px', left: '16px', zIndex: 100,
+      }}>
+        <button type="button" className="icon-btn" onClick={() => navigate('/')} disabled={loading} style={{ width: '36px', height: '36px' }}>
+          <ArrowLeft size={15} />
+        </button>
+      </div>
+
+      {/* Brand mark (horizontal & compact) */}
+      <div style={{
+        position: 'relative', zIndex: 10,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '24px 20px 0',
+        gap: '8px',
+      }}>
+        <div style={{
+          width: '32px', height: '32px',
+          border: '1.5px solid rgba(249,115,22,0.2)',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <img src="/rydrpack_logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+        <span style={{
+          fontFamily: 'Outfit', fontWeight: 800, fontSize: '0.95rem',
+          color: '#F4F4F5', letterSpacing: '-0.3px'
+        }}>RydrPack</span>
+      </div>
 
       <form onSubmit={handleSave} style={{ padding: '16px 20px 32px', display: 'flex', flexDirection: 'column', flex: 1, boxSizing: 'border-box' }}>
 
