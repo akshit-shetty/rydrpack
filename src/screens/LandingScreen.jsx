@@ -40,7 +40,7 @@ export default function LandingScreen() {
       className="page"
       style={{
         background: '#070709',
-        overflowY: 'hidden',
+        overflowY: 'auto',
         minHeight: '100dvh',
         padding: '0',
         display: 'flex',
@@ -133,18 +133,22 @@ export default function LandingScreen() {
         transition={{ duration: 0.65, delay: 0.15 }}
         style={{
           position: 'relative', zIndex: 10,
-          margin: '10px 24px',
+          margin: '10px auto',
+          width: 'calc(100% - 48px)',
+          maxWidth: '260px',
+          aspectRatio: '1',
           borderRadius: '16px',
           overflow: 'hidden',
           border: '1px solid rgba(255,255,255,0.06)',
           boxShadow: '0 12px 30px rgba(0,0,0,0.7)',
           background: '#0e0e10',
+          flexShrink: 0,
         }}
       >
         <img
           src="/group_riders.png"
           alt="Group of Riders in Sequence"
-          style={{ width: '100%', height: 'auto', display: 'block', opacity: 0.92 }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: 0.92 }}
         />
       </motion.div>
 
