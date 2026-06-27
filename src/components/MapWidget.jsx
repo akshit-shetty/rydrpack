@@ -354,7 +354,7 @@ export default function MapWidget({
       // Route lines
       if (map.getLayer(lineLyr)) {
         map.setLayoutProperty(lineLyr, 'visibility', 'visible');
-        map.setPaintProperty(lineLyr, 'line-color', isSelected ? '#1A73E8' : '#78909C');
+        map.setPaintProperty(lineLyr, 'line-color', isSelected ? '#F97316' : '#71717A');
         map.setPaintProperty(lineLyr, 'line-width', isSelected ? 7 : 4.5);
         map.setPaintProperty(lineLyr, 'line-opacity', isSelected ? 1 : 0.7);
       } else {
@@ -364,7 +364,7 @@ export default function MapWidget({
           source: srcId,
           layout: { 'line-cap': 'round', 'line-join': 'round', 'visibility': 'visible' },
           paint: {
-            'line-color': isSelected ? '#1A73E8' : '#78909C',
+            'line-color': isSelected ? '#F97316' : '#71717A',
             'line-width': isSelected ? 7 : 4.5,
             'line-opacity': isSelected ? 1 : 0.7
           }
