@@ -138,21 +138,14 @@ export default function LandingScreen() {
           overflow: 'hidden',
           border: '1px solid rgba(255,255,255,0.06)',
           boxShadow: '0 12px 30px rgba(0,0,0,0.7)',
-          height: '120px',
           background: '#0e0e10',
         }}
       >
         <img
           src="/group_riders.png"
           alt="Group of Riders in Sequence"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: 0.92 }}
+          style={{ width: '100%', height: 'auto', display: 'block', opacity: 0.92 }}
         />
-        {/* Bottom fade */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(to top, #070709 0%, transparent 55%)',
-          pointerEvents: 'none',
-        }} />
       </motion.div>
 
       {/* FEATURE CARDS */}
