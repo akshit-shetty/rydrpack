@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, MoreVertical, Compass, Navigation2, ShieldAlert, Award, Phone, Layers, ShieldCheck, Play, AlertOctagon, ArrowUp, ArrowUpRight, ArrowRight, ArrowUpLeft, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Compass, Navigation2, ShieldAlert, Award, Phone, Layers, ShieldCheck, Play, AlertOctagon, ArrowUp, ArrowUpRight, ArrowRight, ArrowUpLeft, RotateCcw, CheckCircle2, MapPin } from 'lucide-react';
 import Header from '../components/Header';
 import MapWidget from '../components/MapWidget';
 import { useGeolocation, calcDistance } from '../hooks/useGeolocation';
@@ -1013,7 +1013,7 @@ export default function LiveRideScreen({ onShowToast }) {
                 alignItems: 'center'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                  <span style={{ fontSize: '1.1rem' }}>🏁</span>
+                  <MapPin size={18} style={{ color: '#F97316', flexShrink: 0 }} />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {destination.name}
