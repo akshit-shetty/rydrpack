@@ -284,14 +284,14 @@ export default function MapWidget({
           const dot = document.createElement('div');
           dot.style.cssText = `
             width:${size}px; height:${size}px;
-            background:#1A73E8; border-radius:50%;
+            background:#F97316; border-radius:50%;
             border:2.5px solid white;
-            box-shadow: 0 0 8px rgba(26,115,232,0.6); z-index:2;
+            box-shadow: 0 0 8px rgba(249,115,22,0.6); z-index:2;
           `;
           const pulse = document.createElement('div');
           pulse.style.cssText = `
             position:absolute; width:38px; height:38px;
-            background:rgba(26,115,232,0.25); border-radius:50%;
+            background:rgba(249,115,22,0.25); border-radius:50%;
             animation:pulse-ring 2s infinite; z-index:1; pointer-events:none;
           `;
           wrap.appendChild(pulse);
