@@ -1036,7 +1036,7 @@ export default function LiveRideScreen({ onShowToast }) {
                       cursor: 'pointer'
                     }}
                   >
-                    Switch Alt Path
+                    switch path
                   </button>
                 )}
               </div>
