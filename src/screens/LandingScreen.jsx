@@ -30,9 +30,9 @@ export default function LandingScreen() {
   }, [navigate]);
 
   const features = [
-    { num: '01', icon: <Map size={18} />, label: 'Live GPS' },
-    { num: '02', icon: <Shield size={18} />, label: 'Proximity' },
-    { num: '03', icon: <AlertTriangle size={18} />, label: 'SOS Radar' },
+    { icon: <Map size={18} />, label: 'Live GPS' },
+    { icon: <Shield size={18} />, label: 'Proximity' },
+    { icon: <AlertTriangle size={18} />, label: 'SOS Radar' },
   ];
 
   return (
@@ -162,8 +162,8 @@ export default function LandingScreen() {
           gap: '10px', padding: '0 24px', zIndex: 10, position: 'relative',
         }}
       >
-        {features.map((f) => (
-          <div key={f.num} style={{
+         {features.map((f) => (
+          <div key={f.label} style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center',
             gap: '6px', padding: '10px 8px',
             background: 'rgba(255,255,255,0.02)',
@@ -171,11 +171,6 @@ export default function LandingScreen() {
             borderRadius: '12px',
             position: 'relative',
           }}>
-            <span style={{
-              position: 'absolute', top: '8px', left: '8px',
-              fontSize: '0.6rem', fontWeight: 800, color: 'rgba(249,115,22,0.4)',
-              fontFamily: 'Outfit', letterSpacing: '0.5px',
-            }}>{f.num}</span>
             <div style={{ color: 'rgba(249,115,22,0.85)' }}>{f.icon}</div>
             <span style={{
               fontSize: '0.68rem', fontWeight: 700,
