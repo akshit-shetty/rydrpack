@@ -1,11 +1,103 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, MoreVertical, Compass, Navigation2, ShieldAlert, Award, Phone, Layers, ShieldCheck, Play, AlertOctagon } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Compass, Navigation2, ShieldAlert, Award, Phone, Layers, ShieldCheck, Play, AlertOctagon, ArrowUp, ArrowUpRight, ArrowRight, ArrowUpLeft, RotateCcw, CheckCircle2 } from 'lucide-react';
 import Header from '../components/Header';
 import MapWidget from '../components/MapWidget';
 import { useGeolocation, calcDistance } from '../hooks/useGeolocation';
 import { supabase } from '../supabase';
 import { cleanRideId } from './JoinRideScreen';
+
+// Calculate bearing between two coordinates
+const calculateBearing = (lat1, lon1, lat2, lon2) => {
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const lat1Rad = (lat1 * Math.PI) / 180;
+  const lat2Rad = (lat2 * Math.PI) / 180;
+
+  const y = Math.sin(dLon) * Math.cos(lat2Rad);
+  const x =
+    Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+    Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+  
+  let bearing = (Math.atan2(y, x) * 180) / Math.PI;
+  return (bearing + 360) % 360;
+};
+
+// Compute relative navigation arrow and instruction
+const getNavigationInstruction = (userCoords, userHeading, routeCoordinates) => {
+  if (!userCoords || !routeCoordinates || routeCoordinates.length < 2) {
+    return { arrow: 'straight', text: 'Follow the route', angle: 0 };
+  }
+
+  const { lat, lng } = userCoords;
+
+  // Find the index of the closest coordinate on the route
+  let minDistance = Infinity;
+  let closestIndex = 0;
+
+  for (let i = 0; i < routeCoordinates.length; i++) {
+    const rLng = routeCoordinates[i][0];
+    const rLat = routeCoordinates[i][1];
+    const dist = calcDistance(lat, lng, rLat, rLng);
+    if (dist < minDistance) {
+      minDistance = dist;
+      closestIndex = i;
+    }
+  }
+
+  // Look ahead by about 4 coordinates (approx 20-30 meters)
+  const targetIndex = Math.min(closestIndex + 4, routeCoordinates.length - 1);
+  
+  // If near the end of the route
+  if (closestIndex >= routeCoordinates.length - 2) {
+    return { arrow: 'arrive', text: 'Arriving at destination', angle: 0 };
+  }
+
+  const targetLng = routeCoordinates[targetIndex][0];
+  const targetLat = routeCoordinates[targetIndex][1];
+
+  // Compute bearing to the target point
+  const routeBearing = calculateBearing(lat, lng, targetLat, targetLng);
+
+  // Compute relative angle to user's heading
+  const heading = userHeading !== null && userHeading !== undefined ? userHeading : routeBearing;
+  let relativeAngle = routeBearing - heading;
+
+  // Normalize to -180 to 180
+  relativeAngle = ((relativeAngle + 180) % 360) - 180;
+  if (relativeAngle < -180) relativeAngle += 360;
+
+  // Map to arrow directions
+  let arrow = 'straight';
+  let text = 'Go straight';
+
+  if (relativeAngle >= -22.5 && relativeAngle < 22.5) {
+    arrow = 'straight';
+    text = 'Keep straight';
+  } else if (relativeAngle >= 22.5 && relativeAngle < 67.5) {
+    arrow = 'slight-right';
+    text = 'Slight right turn';
+  } else if (relativeAngle >= 67.5 && relativeAngle < 112.5) {
+    arrow = 'right';
+    text = 'Turn right';
+  } else if (relativeAngle >= 112.5 && relativeAngle < 157.5) {
+    arrow = 'sharp-right';
+    text = 'Sharp right turn';
+  } else if (relativeAngle >= -67.5 && relativeAngle < -22.5) {
+    arrow = 'slight-left';
+    text = 'Slight left turn';
+  } else if (relativeAngle >= -112.5 && relativeAngle < -67.5) {
+    arrow = 'left';
+    text = 'Turn left';
+  } else if (relativeAngle >= -157.5 && relativeAngle < -112.5) {
+    arrow = 'sharp-left';
+    text = 'Sharp left turn';
+  } else {
+    arrow = 'uturn';
+    text = 'Make a U-turn';
+  }
+
+  return { arrow, text, angle: relativeAngle };
+};
 
 export default function LiveRideScreen({ onShowToast }) {
   const navigate = useNavigate();
@@ -28,6 +120,40 @@ export default function LiveRideScreen({ onShowToast }) {
   const [mapStyle, setMapStyle] = useState('dark'); // Dark style premium standard
   const [isCentered, setIsCentered] = useState(true);
   const [laggingRider, setLaggingRider] = useState(null); // Alert display packet
+  const [isRideStarted, setIsRideStarted] = useState(false);
+  const [navInstruction, setNavInstruction] = useState({ arrow: 'straight', text: 'Follow the route' });
+
+  const handleStartRide = () => {
+    setIsRideStarted(true);
+    setIsCentered(true);
+    setGpsRequested(true);
+    onShowToast('Ride started! Navigation active. 🏍️', 'success');
+  };
+
+  const renderNavigationArrow = (arrow) => {
+    switch (arrow) {
+      case 'straight':
+        return <ArrowUp size={24} />;
+      case 'slight-right':
+        return <ArrowUpRight size={24} />;
+      case 'right':
+        return <ArrowRight size={24} />;
+      case 'sharp-right':
+        return <ArrowUpRight size={24} style={{ transform: 'rotate(45deg)' }} />;
+      case 'slight-left':
+        return <ArrowUpLeft size={24} />;
+      case 'left':
+        return <ArrowLeft size={24} />;
+      case 'sharp-left':
+        return <ArrowUpLeft size={24} style={{ transform: 'rotate(-45deg)' }} />;
+      case 'uturn':
+        return <RotateCcw size={22} />;
+      case 'arrive':
+        return <CheckCircle2 size={24} style={{ color: '#10B981' }} />;
+      default:
+        return <ArrowUp size={24} />;
+    }
+  };
 
   // Routing metrics
   const [routes, setRoutes] = useState([]);
@@ -131,6 +257,21 @@ export default function LiveRideScreen({ onShowToast }) {
       setMaxSpeed(speed);
     }
   }, [speed, maxSpeed]);
+
+  // Update relative navigation instructions dynamically
+  useEffect(() => {
+    if (isRideStarted && coords && routes.length > 0) {
+      const activeRoute = routes[selectedRouteIndex];
+      if (activeRoute && activeRoute.geometry && activeRoute.geometry.coordinates) {
+        const inst = getNavigationInstruction(
+          coords,
+          heading,
+          activeRoute.geometry.coordinates
+        );
+        setNavInstruction(inst);
+      }
+    }
+  }, [isRideStarted, coords, heading, routes, selectedRouteIndex]);
 
   // Subscribe to Ride Document changes in Supabase
   useEffect(() => {
@@ -596,7 +737,95 @@ export default function LiveRideScreen({ onShowToast }) {
           onSelectRoute={handleSelectRoute}
           isMapCentered={isCentered}
           setIsMapCentered={setIsCentered}
+          isRideStarted={isRideStarted}
+          currentRiderId={session?.riderId}
         />
+
+        {/* Start Ride Floating Button */}
+        {!isRideStarted && (
+          <div style={{
+            position: 'absolute',
+            bottom: '220px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 100,
+            width: '100%',
+            maxWidth: '240px',
+            padding: '0 16px',
+            boxSizing: 'border-box'
+          }}>
+            <button
+              onClick={handleStartRide}
+              className="btn btn-primary"
+              style={{
+                width: '100%',
+                background: 'linear-gradient(135deg, #1A73E8, #1557B0)', // Google Maps Blue gradient
+                color: 'white',
+                border: 'none',
+                borderRadius: '100px',
+                padding: '12px 24px',
+                fontSize: '0.85rem',
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 6px 20px rgba(26, 115, 232, 0.4)',
+                cursor: 'pointer'
+              }}
+            >
+              <Play size={16} style={{ fill: 'white' }} />
+              Start Navigation
+            </button>
+          </div>
+        )}
+
+        {/* Navigation HUD Overlay */}
+        {isRideStarted && routes.length > 0 && coords && (
+          <div style={{
+            position: 'absolute',
+            top: '80px',
+            left: '16px',
+            right: '16px',
+            background: 'rgba(18, 18, 20, 0.92)',
+            backdropFilter: 'blur(10px)',
+            border: '1.5px solid rgba(26, 115, 232, 0.4)', // Google Maps Blue border highlight
+            borderRadius: '16px',
+            padding: '12px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            zIndex: 45
+          }}>
+            {/* Direction Arrow */}
+            <div style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '10px',
+              background: 'rgba(26, 115, 232, 0.15)',
+              border: '1px solid rgba(26, 115, 232, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#1A73E8'
+            }}>
+              {renderNavigationArrow(navInstruction.arrow)}
+            </div>
+            
+            {/* Instruction text */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#FFFFFF' }}>
+                {navInstruction.text}
+              </div>
+              <div style={{ fontSize: '0.66rem', color: '#A1A1AA', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span>GPS Navigation Active</span>
+                <span>·</span>
+                <span>{distanceRemaining !== null ? `${distanceRemaining.toFixed(1)} km left` : ''}</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Floating SOS Trigger Button */}
         <button 

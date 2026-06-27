@@ -15,7 +15,9 @@ export default function MapWidget({
   selectedRouteIndex = 0,
   onSelectRoute,
   isMapCentered,
-  setIsMapCentered
+  setIsMapCentered,
+  isRideStarted = false,
+  currentRiderId = null
 }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -87,10 +89,12 @@ export default function MapWidget({
       map.easeTo({
         center: [userCoords.lng, userCoords.lat],
         bearing: userHeading || 0,
-        duration: 600
+        zoom: isRideStarted ? 16.8 : 14.5, // Google Maps detailed navigation zoom
+        pitch: isRideStarted ? 52 : 40,   // Google Maps navigation camera tilt
+        duration: 800
       });
     }
-  }, [userCoords, userHeading, isMapCentered]);
+  }, [userCoords, userHeading, isMapCentered, isRideStarted]);
 
   // Update User & Riders Markers
   useEffect(() => {
@@ -106,8 +110,65 @@ export default function MapWidget({
     };
 
     // Helper to create HTML marker element
-    const createMarkerEl = (name, color, isMe) => {
-      const size = isMe ? 42 : 34;
+    const createMarkerEl = (name, color, isMe, initialHeading) => {
+      if (isMe) {
+        if (isRideStarted) {
+          // Google Maps Blue Navigation Chevron (Arrow)
+          const size = 32;
+          const wrap = document.createElement('div');
+          wrap.className = 'gmaps-nav-chevron';
+          wrap.style.cssText = `
+            position:relative; width:${size}px; height:${size}px; cursor:pointer;
+            display:flex; align-items:center; justify-content:center;
+            transform: rotate(${initialHeading || 0}deg);
+            transition: transform 0.25s ease-out;
+          `;
+          
+          wrap.innerHTML = `
+            <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" style="filter: drop-shadow(0px 3px 5px rgba(0, 0, 0, 0.45));">
+              <path d="M12 2L3 22L12 17.5L21 22L12 2Z" fill="#1A73E8" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
+            </svg>
+          `;
+          return wrap;
+        } else {
+          // Google Maps Pulsing Blue Dot
+          const size = 20;
+          const wrap = document.createElement('div');
+          wrap.className = 'gmaps-blue-dot';
+          wrap.style.cssText = `
+            position:relative; width:${size}px; height:${size}px; cursor:pointer;
+            display:flex; align-items:center; justify-content:center;
+          `;
+          
+          const dot = document.createElement('div');
+          dot.style.cssText = `
+            width:${size}px; height:${size}px;
+            background:#1A73E8;
+            border-radius:50%;
+            border:2.5px solid white;
+            box-shadow: 0 0 8px rgba(26, 115, 232, 0.6);
+            z-index: 2;
+          `;
+          
+          const pulse = document.createElement('div');
+          pulse.style.cssText = `
+            position:absolute;
+            width:38px; height:38px;
+            background:rgba(26, 115, 232, 0.25);
+            border-radius:50%;
+            animation: pulse-ring 2s infinite;
+            z-index: 1;
+            pointer-events: none;
+          `;
+          
+          wrap.appendChild(pulse);
+          wrap.appendChild(dot);
+          return wrap;
+        }
+      }
+
+      // Standard Rider Marker
+      const size = 34;
       const wrap = document.createElement('div');
       wrap.style.cssText = `position:relative;width:${size}px;height:${size}px;cursor:pointer;`;
 
@@ -116,11 +177,11 @@ export default function MapWidget({
         width:${size}px; height:${size}px;
         background:${color};
         border-radius:50%;
-        border:${isMe ? '3px solid white' : '2px solid rgba(255,255,255,0.85)'};
-        box-shadow:${isMe ? `0 0 0 3px ${color}44, 0 4px 16px rgba(0,0,0,0.28)` : '0 2px 10px rgba(0,0,0,0.22)'};
+        border:2px solid rgba(255,255,255,0.85);
+        box-shadow:0 2px 10px rgba(0,0,0,0.22);
         display:flex; align-items:center; justify-content:center;
         font-family:'Inter',sans-serif;
-        font-size:${isMe ? '0.78rem' : '0.66rem'};
+        font-size:0.66rem;
         font-weight:800; color:white;
         user-select:none;
       `;
@@ -143,18 +204,38 @@ export default function MapWidget({
 
     const activeRiderIds = new Set();
 
-    // Upsert other riders
+    // Upsert other riders and user
     riders.forEach(r => {
       if (!r.lat || !r.lng || !r.online) return;
       activeRiderIds.add(r.id);
 
-      if (markersRef.current[r.id]) {
-        markersRef.current[r.id].setLngLat([r.lng, r.lat]);
+      const isMe = r.id === currentRiderId;
+      const expectedType = isMe ? (isRideStarted ? 'chevron' : 'dot') : 'standard';
+
+      let existingMarker = markersRef.current[r.id];
+      if (existingMarker && existingMarker.markerType !== expectedType) {
+        existingMarker.remove();
+        delete markersRef.current[r.id];
+        existingMarker = null;
+      }
+
+      const currentHeading = r.heading || userHeading || 0;
+
+      if (existingMarker) {
+        existingMarker.setLngLat([r.lng, r.lat]);
+        if (isMe && isRideStarted) {
+          const el = existingMarker.getElement();
+          if (el) {
+            el.style.transform = `rotate(${currentHeading}deg)`;
+          }
+        }
       } else {
-        const el = createMarkerEl(r.name, r.color || '#6366F1', false);
+        const el = createMarkerEl(r.name, r.color || '#6366F1', isMe, currentHeading);
         const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
           .setLngLat([r.lng, r.lat])
           .addTo(map);
+
+        marker.markerType = expectedType;
 
         el.addEventListener('click', () => {
           map.flyTo({ center: [r.lng, r.lat], zoom: 16 });
@@ -172,7 +253,7 @@ export default function MapWidget({
         delete markersRef.current[id];
       }
     });
-  }, [riders]);
+  }, [riders, isRideStarted, currentRiderId, userHeading]);
 
   // Destination Marker
   useEffect(() => {
@@ -254,8 +335,8 @@ export default function MapWidget({
       // White outline casing for contrast
       if (map.getLayer(casingLyr)) {
         map.setLayoutProperty(casingLyr, 'visibility', 'visible');
-        map.setPaintProperty(casingLyr, 'line-width', isSelected ? 9 : 6.5);
-        map.setPaintProperty(casingLyr, 'line-opacity', isSelected ? 0.85 : 0.35);
+        map.setPaintProperty(casingLyr, 'line-width', isSelected ? 11 : 7.5);
+        map.setPaintProperty(casingLyr, 'line-opacity', isSelected ? 0.9 : 0.3);
       } else {
         map.addLayer({
           id: casingLyr,
@@ -264,8 +345,8 @@ export default function MapWidget({
           layout: { 'line-cap': 'round', 'line-join': 'round', 'visibility': 'visible' },
           paint: {
             'line-color': '#FFFFFF',
-            'line-width': isSelected ? 9 : 6.5,
-            'line-opacity': isSelected ? 0.85 : 0.35
+            'line-width': isSelected ? 11 : 7.5,
+            'line-opacity': isSelected ? 0.9 : 0.3
           }
         });
       }
@@ -273,9 +354,9 @@ export default function MapWidget({
       // Route lines
       if (map.getLayer(lineLyr)) {
         map.setLayoutProperty(lineLyr, 'visibility', 'visible');
-        map.setPaintProperty(lineLyr, 'line-color', isSelected ? '#F97316' : '#71717A');
-        map.setPaintProperty(lineLyr, 'line-width', isSelected ? 6 : 3.5);
-        map.setPaintProperty(lineLyr, 'line-opacity', isSelected ? 1 : 0.65);
+        map.setPaintProperty(lineLyr, 'line-color', isSelected ? '#1A73E8' : '#78909C');
+        map.setPaintProperty(lineLyr, 'line-width', isSelected ? 7 : 4.5);
+        map.setPaintProperty(lineLyr, 'line-opacity', isSelected ? 1 : 0.7);
       } else {
         map.addLayer({
           id: lineLyr,
@@ -283,9 +364,9 @@ export default function MapWidget({
           source: srcId,
           layout: { 'line-cap': 'round', 'line-join': 'round', 'visibility': 'visible' },
           paint: {
-            'line-color': isSelected ? '#F97316' : '#71717A',
-            'line-width': isSelected ? 6 : 3.5,
-            'line-opacity': isSelected ? 1 : 0.65
+            'line-color': isSelected ? '#1A73E8' : '#78909C',
+            'line-width': isSelected ? 7 : 4.5,
+            'line-opacity': isSelected ? 1 : 0.7
           }
         });
       }
