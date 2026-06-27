@@ -531,6 +531,17 @@ export default function LiveRideScreen({ onShowToast }) {
     };
     setDestination(newDest);
     
+    // Update local session caches to match the new destination
+    if (session) {
+      const updatedSession = {
+        ...session,
+        destination: newDest
+      };
+      setSession(updatedSession);
+      localStorage.setItem('rydr_rider', JSON.stringify(updatedSession));
+      sessionStorage.setItem('rydr_session', JSON.stringify(updatedSession));
+    }
+    
     // Force OSRM route fetch immediately
     if (coords) {
       fetchOSRMRoute(coords.lat, coords.lng, lat, lng);
