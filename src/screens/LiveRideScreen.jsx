@@ -460,15 +460,16 @@ export default function LiveRideScreen({ onShowToast }) {
       // line distance (start → dest). This is a good proxy without needing to snap
       // the user position to the polyline.
       if (coords && destination) {
-        const initialStraightLine = baseOSRMDistance.current
-          ? baseOSRMDistance.current / 1000
-          : calcDistance(lastRouteUpdateCoords.current.lat || coords.lat,
-                         lastRouteUpdateCoords.current.lng || coords.lng,
-                         destination.lat, destination.lng);
+        const totalStraightLine = calcDistance(
+          lastRouteUpdateCoords.current.lat || coords.lat,
+          lastRouteUpdateCoords.current.lng || coords.lng,
+          destination.lat,
+          destination.lng
+        );
         const currentStraightLine = calcDistance(coords.lat, coords.lng, destination.lat, destination.lng);
         // Remaining fraction (clamped 0–1)
-        const fraction = initialStraightLine > 0
-          ? Math.min(1, Math.max(0, currentStraightLine / initialStraightLine))
+        const fraction = totalStraightLine > 0.05
+          ? Math.min(1, Math.max(0, currentStraightLine / totalStraightLine))
           : 1;
         setDistanceRemaining(Math.max(0, routeDistanceKm * fraction));
         setEtaSeconds(Math.max(0, Math.round(routeDurationSec * fraction)));
