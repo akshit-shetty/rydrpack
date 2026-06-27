@@ -707,8 +707,6 @@ export default function LiveRideScreen({ onShowToast }) {
     }
   }, [riders, coords, session]);
 
-  if (!session || !rideId) return null;
-
   // Reverse geocode when Pack List opens
   useEffect(() => {
     if (showRidersOverlay) {
