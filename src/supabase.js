@@ -10,6 +10,9 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ===== MAPTILER CONFIG =====
 export const MAPTILER_KEY = 'oyECSNKEJJEgtZCoaFWS';
 
+// ===== GOOGLE MAPS CONFIG =====
+export const GOOGLE_MAPS_KEY = 'AIzaSyBUXlVjNm313KZQGeDid5TUZERHHBt6tWU';
+
 export const MAP_STYLES = {
   outdoor:   `https://api.maptiler.com/maps/outdoor-v2/style.json?key=${MAPTILER_KEY}`,
   streets:   `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`,

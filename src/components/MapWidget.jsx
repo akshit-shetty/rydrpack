@@ -18,7 +18,8 @@ export default function MapWidget({
   isMapCentered,
   setIsMapCentered,
   isRideStarted = false,
-  currentRiderId = null
+  currentRiderId = null,
+  showTraffic = false
 }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -54,7 +55,7 @@ export default function MapWidget({
           source: srcId,
           layout: { 'line-cap': 'round', 'line-join': 'round' },
           paint: {
-            'line-color': userColor || '#F97316',
+            'line-color': userColor || '#3B82F6',
             'line-width': 3,
             'line-opacity': 0.6
           }
@@ -102,7 +103,7 @@ export default function MapWidget({
           paint: {
             'line-color': '#FFFFFF',
             'line-width': isSelected ? 11 : 7.5,
-            'line-opacity': isSelected ? 0.9 : 0.3
+            'line-opacity': isSelected ? 0.35 : 0.2
           }
         });
       }
@@ -110,9 +111,9 @@ export default function MapWidget({
       // Route lines
       if (map.getLayer(lineLyr)) {
         map.setLayoutProperty(lineLyr, 'visibility', 'visible');
-        map.setPaintProperty(lineLyr, 'line-color', isSelected ? '#F97316' : '#71717A');
+        map.setPaintProperty(lineLyr, 'line-color', isSelected ? '#3B82F6' : '#71717A');
         map.setPaintProperty(lineLyr, 'line-width', isSelected ? 7 : 4.5);
-        map.setPaintProperty(lineLyr, 'line-opacity', isSelected ? 1 : 0.7);
+        map.setPaintProperty(lineLyr, 'line-opacity', isSelected ? 0.55 : 0.7);
       } else {
         map.addLayer({
           id: lineLyr,
@@ -120,9 +121,9 @@ export default function MapWidget({
           source: srcId,
           layout: { 'line-cap': 'round', 'line-join': 'round', 'visibility': 'visible' },
           paint: {
-            'line-color': isSelected ? '#F97316' : '#71717A',
+            'line-color': isSelected ? '#3B82F6' : '#71717A',
             'line-width': isSelected ? 7 : 4.5,
-            'line-opacity': isSelected ? 1 : 0.7
+            'line-opacity': isSelected ? 0.55 : 0.7
           }
         });
       }
@@ -270,7 +271,7 @@ export default function MapWidget({
               style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.45));"
               transform="rotate(${heading})"
             >
-              <path d="M12 2L3 22L12 17.5L21 22L12 2Z" fill="#F97316" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
+              <path d="M12 2L3 22L12 17.5L21 22L12 2Z" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
             </svg>
           `;
           return wrap;
@@ -285,14 +286,14 @@ export default function MapWidget({
           const dot = document.createElement('div');
           dot.style.cssText = `
             width:${size}px; height:${size}px;
-            background:#F97316; border-radius:50%;
+            background:#3B82F6; border-radius:50%;
             border:2.5px solid white;
-            box-shadow: 0 0 8px rgba(249,115,22,0.6); z-index:2;
+            box-shadow: 0 0 8px rgba(59,130,246,0.6); z-index:2;
           `;
           const pulse = document.createElement('div');
           pulse.style.cssText = `
             position:absolute; width:38px; height:38px;
-            background:rgba(249,115,22,0.25); border-radius:50%;
+            background:rgba(59,130,246,0.25); border-radius:50%;
             animation:pulse-ring 2s infinite; z-index:1; pointer-events:none;
           `;
           wrap.appendChild(pulse);
@@ -392,7 +393,7 @@ export default function MapWidget({
         el.style.cssText = 'width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; filter:drop-shadow(0px 3px 6px rgba(0,0,0,0.4));';
         el.innerHTML = `
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2Z" fill="#F97316" stroke="#FFFFFF" stroke-width="1.8"/>
+            <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2Z" fill="#EF4444" stroke="#FFFFFF" stroke-width="1.8"/>
             <circle cx="12" cy="9" r="3.5" fill="#FFFFFF"/>
           </svg>
         `;
@@ -435,6 +436,36 @@ export default function MapWidget({
       map.once('load', () => drawRouteLayersRef.current(map));
     }
   }, [allRoutes, selectedRouteIndex]);
+
+  // Toggle Traffic Layer
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+
+    const lyrId = 'google-traffic';
+    const srcId = 'google-traffic-src';
+
+    if (showTraffic) {
+      if (!map.getSource(srcId)) {
+        map.addSource(srcId, {
+          type: 'raster',
+          tiles: ['https://mt1.google.com/vt?lyrs=traffic&x={x}&y={y}&z={z}'],
+          tileSize: 256
+        });
+      }
+      if (!map.getLayer(lyrId)) {
+        map.addLayer({
+          id: lyrId,
+          type: 'raster',
+          source: srcId,
+          paint: { 'raster-opacity': 0.8 }
+        }, map.getLayer('waterway') ? 'waterway' : undefined);
+      }
+    } else {
+      if (map.getLayer(lyrId)) map.removeLayer(lyrId);
+      if (map.getSource(srcId)) map.removeSource(srcId);
+    }
+  }, [showTraffic]);
 
   return <div ref={mapContainerRef} style={{ width: '100%', height: '100%', borderRadius: 'inherit' }} />;
 }

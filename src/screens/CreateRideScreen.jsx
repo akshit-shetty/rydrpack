@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Calendar, Users, ShieldAlert, Sparkles, ChevronRight, Compass, Clock } from 'lucide-react';
-import { supabase, MAPTILER_KEY } from '../supabase';
+import { supabase, GOOGLE_MAPS_KEY } from '../supabase';
+import { useGeolocation } from '../hooks/useGeolocation';
 
 export default function CreateRideScreen({ onShowToast }) {
   const navigate = useNavigate();
@@ -21,6 +22,9 @@ export default function CreateRideScreen({ onShowToast }) {
   const [safetyNotes, setSafetyNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Get user location to bias search results
+  const { coords } = useGeolocation({});
+
   // Geocoding suggest timeout ref
   const suggestTimeoutRef = useRef(null);
 
@@ -38,27 +42,67 @@ export default function CreateRideScreen({ onShowToast }) {
 
     suggestTimeoutRef.current = setTimeout(async () => {
       try {
-        const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(val)}.json?key=${MAPTILER_KEY}&autocomplete=true&fuzzyMatch=true&language=en`;
-        const res = await fetch(url);
+        const requestBody = { input: val };
+        
+        // Bias search results to user location if available
+        if (coords) {
+          requestBody.locationBias = {
+            circle: {
+              center: { latitude: coords.lat, longitude: coords.lng },
+              radius: 50000.0 // 50km
+            }
+          };
+        }
+
+        const res = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': GOOGLE_MAPS_KEY
+          },
+          body: JSON.stringify(requestBody)
+        });
+        
         const data = await res.json();
-        if (data.features) {
-          const suggestions = data.features.map(f => ({
-            name: f.place_name,
-            lng: f.geometry.coordinates[0],
-            lat: f.geometry.coordinates[1]
+        if (data.suggestions) {
+          const suggestions = data.suggestions.map(s => ({
+            name: s.placePrediction.text.text,
+            place_id: s.placePrediction.placeId
           }));
           setDestSuggestions(suggestions);
+        } else {
+          setDestSuggestions([]);
         }
       } catch (err) {
-        console.error('Geocoding suggestions error:', err);
+        console.error('Places API autocomplete error:', err);
       }
     }, 450);
   };
 
-  const handleSelectDest = (dest) => {
-    setSelectedDest(dest);
+  const handleSelectDest = async (dest) => {
     setDestQuery(dest.name);
     setDestSuggestions([]);
+    
+    if (dest.place_id) {
+      try {
+        const res = await fetch(`https://places.googleapis.com/v1/places/${dest.place_id}?fields=location,displayName`, {
+          headers: {
+            'X-Goog-Api-Key': GOOGLE_MAPS_KEY
+          }
+        });
+        const data = await res.json();
+        
+        if (data.location) {
+          setSelectedDest({
+            name: dest.name,
+            lat: data.location.latitude,
+            lng: data.location.longitude
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch place details:', err);
+      }
+    }
   };
 
   // Build unique ID
