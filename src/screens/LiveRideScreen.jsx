@@ -785,52 +785,7 @@ export default function LiveRideScreen({ onShowToast }) {
           currentRiderId={session?.riderId}
         />
 
-        {/* Navigation HUD Overlay */}
-        {isRideStarted && routes.length > 0 && coords && (
-          <div style={{
-            position: 'absolute',
-            top: '80px',
-            left: '16px',
-            right: '16px',
-            background: 'rgba(18, 18, 20, 0.92)',
-            backdropFilter: 'blur(10px)',
-            border: '1.5px solid rgba(249, 115, 22, 0.4)',
-            borderRadius: '16px',
-            padding: '12px 18px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-            zIndex: 45
-          }}>
-            {/* Direction Arrow */}
-            <div style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '10px',
-              background: 'rgba(249, 115, 22, 0.15)',
-              border: '1px solid rgba(249, 115, 22, 0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#F97316'
-            }}>
-              {renderNavigationArrow(navInstruction.arrow)}
-            </div>
-            
-            {/* Instruction text */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#FFFFFF' }}>
-                {navInstruction.text}
-              </div>
-              <div style={{ fontSize: '0.66rem', color: '#A1A1AA', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span>GPS Navigation Active</span>
-                <span>·</span>
-                <span>{distanceRemaining !== null ? `${distanceRemaining.toFixed(1)} km left` : ''}</span>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* Floating SOS Trigger Button */}
         <button 
