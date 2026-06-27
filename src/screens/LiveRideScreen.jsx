@@ -306,6 +306,10 @@ export default function LiveRideScreen({ onShowToast }) {
               lng: Number(data.destination_lng)
             });
           }
+          // Apply host's selected route index for joiners (host keeps their own via handleSelectRoute)
+          if (!session?.isHost && typeof data.selected_route_index === 'number') {
+            setSelectedRouteIndex(data.selected_route_index);
+          }
         }
       } catch (err) {
         console.warn('Failed to load initial ride details:', err);
@@ -324,6 +328,10 @@ export default function LiveRideScreen({ onShowToast }) {
           title: data.title,
           active: data.active
         } : null);
+        // Sync host's route selection to all joiners in real-time
+        if (!session?.isHost && typeof data.selected_route_index === 'number') {
+          setSelectedRouteIndex(data.selected_route_index);
+        }
       })
       .subscribe();
 
@@ -416,6 +424,8 @@ export default function LiveRideScreen({ onShowToast }) {
       const data = await res.json();
       if (data.code === 'Ok' && data.routes?.length) {
         setRoutes(data.routes);
+        // Always default to route 0 (fastest) on initial fetch
+        setSelectedRouteIndex(0);
         const bestRoute = data.routes[0];
         baseOSRMDistance.current = bestRoute.distance;
         baseOSRMDuration.current = bestRoute.duration;
@@ -483,13 +493,24 @@ export default function LiveRideScreen({ onShowToast }) {
     setGpsRequested(true);
   };
 
-  const handleSelectRoute = (idx) => {
+  const handleSelectRoute = async (idx) => {
     setSelectedRouteIndex(idx);
     const activeRoute = routes[idx];
     if (activeRoute) {
       baseOSRMDistance.current = activeRoute.distance;
       baseOSRMDuration.current = activeRoute.duration;
       onShowToast(`Route ${idx + 1} chosen${idx === 0 ? ' (Fastest)' : ''}`, 'success');
+    }
+    // Host saves selected route index to Supabase so all joiners see the same route
+    if (session?.isHost && rideId) {
+      try {
+        await supabase
+          .from('rides')
+          .update({ selected_route_index: idx })
+          .eq('ride_id', rideId);
+      } catch (e) {
+        console.warn('Failed to save selected route index:', e);
+      }
     }
   };
 

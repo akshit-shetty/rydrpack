@@ -430,8 +430,19 @@ export default function MapWidget({
 
   useEffect(() => {
     const map = mapRef.current;
-    if (map) {
+    if (!map) return;
+
+    if (map.isStyleLoaded()) {
       drawRouteLayers(map);
+    } else {
+      // Style not ready yet — defer until it is
+      const onReady = () => {
+        drawRouteLayers(map);
+        map.off('styledata', onReady);
+        map.off('load', onReady);
+      };
+      map.on('styledata', onReady);
+      map.on('load', onReady);
     }
   }, [allRoutes, selectedRouteIndex]);
 
