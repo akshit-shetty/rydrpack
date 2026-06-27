@@ -395,7 +395,7 @@ export default function LiveRideScreen({ onShowToast }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [rideId, destination]);
+  }, [rideId]);
 
   // Subscribe to other riders' coordinates in Supabase
   useEffect(() => {
