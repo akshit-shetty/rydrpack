@@ -258,9 +258,16 @@ export default function OnboardingScreen({ onShowToast }) {
       localStorage.setItem('rydr_rider_profile', JSON.stringify(profile));
       localStorage.setItem('rydr_rider_id', riderId);
 
+      const pendingRideId = sessionStorage.getItem('rydr_join_after_onboard');
+
       onShowToast('Profile synced successfully! 🏍️', 'success');
       setTimeout(() => {
-        navigate('/dashboard');
+        if (pendingRideId) {
+          sessionStorage.removeItem('rydr_join_after_onboard');
+          navigate(`/join-ride?rideId=${pendingRideId}`);
+        } else {
+          navigate('/dashboard');
+        }
       }, 800);
     } catch (err) {
       console.error(err);
@@ -269,7 +276,16 @@ export default function OnboardingScreen({ onShowToast }) {
       // Fallback local save
       localStorage.setItem('rydr_rider_profile', JSON.stringify(profile));
       localStorage.setItem('rydr_rider_id', riderId);
-      setTimeout(() => navigate('/dashboard'), 800);
+      
+      const pendingRideId = sessionStorage.getItem('rydr_join_after_onboard');
+      setTimeout(() => {
+        if (pendingRideId) {
+          sessionStorage.removeItem('rydr_join_after_onboard');
+          navigate(`/join-ride?rideId=${pendingRideId}`);
+        } else {
+          navigate('/dashboard');
+        }
+      }, 800);
     } finally {
       setLoading(false);
     }

@@ -63,27 +63,35 @@ export default function JoinRideScreen({ onShowToast }) {
                       searchParams.get('rideid') || 
                       searchParams.get('ride') || 
                       searchParams.get('r');
-    if (urlRideId) {
-      const cleanedId = cleanRideId(urlRideId);
+    const cleanedId = urlRideId ? cleanRideId(urlRideId) : '';
+
+    const profileStr = localStorage.getItem('rydr_rider_profile');
+    if (!profileStr) {
+      if (cleanedId) {
+        sessionStorage.setItem('rydr_join_after_onboard', cleanedId);
+      }
+      onShowToast('Please register or log in to join the ride', 'error');
+      navigate('/onboarding');
+      return;
+    }
+
+    if (cleanedId) {
       setRideIdInput(cleanedId);
       fetchRidePreview(cleanedId);
     }
 
     try {
-      const profileStr = localStorage.getItem('rydr_rider_profile');
-      if (profileStr) {
-        const profile = JSON.parse(profileStr);
-        if (profile.firstName) {
-          setRiderName(`${profile.firstName} ${profile.lastName || ''}`.trim());
-          if (profile.bikeModel) {
-            setBikeName(`${profile.bikeBrand || ''} ${profile.bikeModel}`.trim());
-          }
+      const profile = JSON.parse(profileStr);
+      if (profile.firstName) {
+        setRiderName(`${profile.firstName} ${profile.lastName || ''}`.trim());
+        if (profile.bikeModel) {
+          setBikeName(`${profile.bikeBrand || ''} ${profile.bikeModel}`.trim());
         }
       }
     } catch (e) {
       console.warn('Failed to load profile for prefill:', e);
     }
-  }, [searchParams]);
+  }, [searchParams, navigate]);
 
   const fetchRidePreview = async (id) => {
     if (!id) return;

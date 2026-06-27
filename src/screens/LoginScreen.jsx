@@ -63,10 +63,17 @@ export default function LoginScreen({ onShowToast }) {
         localStorage.setItem('rydr_rider_profile', JSON.stringify(profile));
         localStorage.setItem('rydr_rider_id', riderRecord.rider_id);
 
+        const pendingRideId = sessionStorage.getItem('rydr_join_after_onboard');
+
         onShowToast(`Welcome back, ${riderRecord.first_name}! 🏍️`, 'success');
 
         setTimeout(() => {
-          navigate('/dashboard');
+          if (pendingRideId) {
+            sessionStorage.removeItem('rydr_join_after_onboard');
+            navigate(`/join-ride?rideId=${pendingRideId}`);
+          } else {
+            navigate('/dashboard');
+          }
         }, 800);
       } else {
         onShowToast('Email not registered. Please create a new profile.', 'error');
