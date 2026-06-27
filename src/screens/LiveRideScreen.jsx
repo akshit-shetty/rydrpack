@@ -447,24 +447,45 @@ export default function LiveRideScreen({ onShowToast }) {
     }
   }, [coords, destination]);
 
-  // HUD Math updates
+  // HUD Math updates — uses real OSRM route distance, not straight-line
   useEffect(() => {
-    if (coords && destination) {
-      const currentDistance = calcDistance(coords.lat, coords.lng, destination.lat, destination.lng);
-      setDistanceRemaining(currentDistance);
+    if (routes.length > 0) {
+      // Always use the selected route's actual road distance & duration from OSRM
+      const activeRoute = routes[selectedRouteIndex] || routes[0];
+      const routeDistanceKm = activeRoute.distance / 1000; // OSRM returns metres
+      const routeDurationSec = activeRoute.duration;       // OSRM returns seconds
 
-      if (baseOSRMDistance.current && baseOSRMDistance.current > 0.001) {
-        const ratio = currentDistance / (baseOSRMDistance.current / 1000);
-        if (baseOSRMDuration.current) {
-          setEtaSeconds(Math.max(0, Math.round(baseOSRMDuration.current * ratio)));
-        }
+      // If we have GPS, subtract how far we've already traveled along the route.
+      // We do this by computing the ratio of straight-line progress to total straight-
+      // line distance (start → dest). This is a good proxy without needing to snap
+      // the user position to the polyline.
+      if (coords && destination) {
+        const initialStraightLine = baseOSRMDistance.current
+          ? baseOSRMDistance.current / 1000
+          : calcDistance(lastRouteUpdateCoords.current.lat || coords.lat,
+                         lastRouteUpdateCoords.current.lng || coords.lng,
+                         destination.lat, destination.lng);
+        const currentStraightLine = calcDistance(coords.lat, coords.lng, destination.lat, destination.lng);
+        // Remaining fraction (clamped 0–1)
+        const fraction = initialStraightLine > 0
+          ? Math.min(1, Math.max(0, currentStraightLine / initialStraightLine))
+          : 1;
+        setDistanceRemaining(Math.max(0, routeDistanceKm * fraction));
+        setEtaSeconds(Math.max(0, Math.round(routeDurationSec * fraction)));
       } else {
-        setEtaSeconds(Math.round(currentDistance * 80));
+        // No GPS yet — just show the full route distance/time
+        setDistanceRemaining(routeDistanceKm);
+        setEtaSeconds(Math.round(routeDurationSec));
       }
+    } else if (coords && destination) {
+      // No OSRM routes yet — fall back to straight-line as placeholder
+      const d = calcDistance(coords.lat, coords.lng, destination.lat, destination.lng);
+      setDistanceRemaining(d);
+      setEtaSeconds(Math.round(d * 80));
     } else {
       setDistanceRemaining(totalDistance);
     }
-  }, [coords, destination, totalDistance]);
+  }, [coords, destination, totalDistance, routes, selectedRouteIndex]);
 
   // Pacing alerts (Check if any online rider falls behind by > 3km)
   useEffect(() => {
