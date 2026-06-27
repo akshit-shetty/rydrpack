@@ -121,6 +121,7 @@ export default function LiveRideScreen({ onShowToast }) {
   const [isCentered, setIsCentered] = useState(true);
   const [laggingRider, setLaggingRider] = useState(null); // Alert display packet
   const [isRideStarted, setIsRideStarted] = useState(false);
+  const [isDrawerCollapsed, setIsDrawerCollapsed] = useState(false);
   const [navInstruction, setNavInstruction] = useState({ arrow: 'straight', text: 'Follow the route' });
 
   const handleStartRide = () => {
@@ -741,45 +742,6 @@ export default function LiveRideScreen({ onShowToast }) {
           currentRiderId={session?.riderId}
         />
 
-        {/* Start Ride Floating Button */}
-        {!isRideStarted && (
-          <div style={{
-            position: 'absolute',
-            bottom: '220px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 100,
-            width: '100%',
-            maxWidth: '240px',
-            padding: '0 16px',
-            boxSizing: 'border-box'
-          }}>
-            <button
-              onClick={handleStartRide}
-              className="btn btn-primary"
-              style={{
-                width: '100%',
-                background: 'linear-gradient(135deg, #1A73E8, #1557B0)', // Google Maps Blue gradient
-                color: 'white',
-                border: 'none',
-                borderRadius: '100px',
-                padding: '12px 24px',
-                fontSize: '0.85rem',
-                fontWeight: 800,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                boxShadow: '0 6px 20px rgba(26, 115, 232, 0.4)',
-                cursor: 'pointer'
-              }}
-            >
-              <Play size={16} style={{ fill: 'white' }} />
-              Start Navigation
-            </button>
-          </div>
-        )}
-
         {/* Navigation HUD Overlay */}
         {isRideStarted && routes.length > 0 && coords && (
           <div style={{
@@ -789,7 +751,7 @@ export default function LiveRideScreen({ onShowToast }) {
             right: '16px',
             background: 'rgba(18, 18, 20, 0.92)',
             backdropFilter: 'blur(10px)',
-            border: '1.5px solid rgba(26, 115, 232, 0.4)', // Google Maps Blue border highlight
+            border: '1.5px solid rgba(249, 115, 22, 0.4)',
             borderRadius: '16px',
             padding: '12px 18px',
             display: 'flex',
@@ -803,12 +765,12 @@ export default function LiveRideScreen({ onShowToast }) {
               width: '42px',
               height: '42px',
               borderRadius: '10px',
-              background: 'rgba(26, 115, 232, 0.15)',
-              border: '1px solid rgba(26, 115, 232, 0.3)',
+              background: 'rgba(249, 115, 22, 0.15)',
+              border: '1px solid rgba(249, 115, 22, 0.3)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#1A73E8'
+              color: '#F97316'
             }}>
               {renderNavigationArrow(navInstruction.arrow)}
             </div>
@@ -937,114 +899,158 @@ export default function LiveRideScreen({ onShowToast }) {
         gap: '16px',
         zIndex: 50
       }}>
-        <div style={{ width: '40px', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', margin: '0 auto 4px' }} />
-
-        {/* Stats metrics row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', textAlign: 'center' }}>
-          <div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
-              {speed}
-            </div>
-            <div style={{ fontSize: '0.62rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>km/h</div>
-          </div>
-          <div style={{ borderLeft: '1px solid rgba(255,255,255,0.05)', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
-              {distanceRemaining !== null ? distanceRemaining.toFixed(1) : '0.0'}
-            </div>
-            <div style={{ fontSize: '0.62rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>km to dest</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
-              {formatTime(etaSeconds)}
-            </div>
-            <div style={{ fontSize: '0.62rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>est remaining</div>
-          </div>
+        {/* Clickable collapse/expand handle */}
+        <div
+          onClick={() => setIsDrawerCollapsed(c => !c)}
+          style={{
+            cursor: 'pointer',
+            display: 'flex',
+            justifyContent: 'center',
+            paddingBottom: '4px',
+            userSelect: 'none'
+          }}
+        >
+          <div style={{ width: '40px', height: '4px', background: 'rgba(255,255,255,0.18)', borderRadius: '2px' }} />
         </div>
 
-        {/* Destination row indicator */}
-        {destination && (
-          <div style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: '12px',
-            padding: '10px 14px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-              <span style={{ fontSize: '1.1rem' }}>🏁</span>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {destination.name}
-                </div>
-                <div style={{ fontSize: '0.62rem', color: '#71717A' }}>
-                  OSRM computed routing route
-                </div>
+        {/* Stats metrics row — always visible; contains Start button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', textAlign: 'center', flex: 1 }}>
+            <div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
+                {speed}
               </div>
+              <div style={{ fontSize: '0.62rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>km/h</div>
             </div>
-            
-            {routes.length > 1 && (
-              <button 
-                onClick={() => handleSelectRoute((selectedRouteIndex + 1) % routes.length)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#F97316',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                Switch Alt Path
-              </button>
-            )}
+            <div style={{ borderLeft: '1px solid rgba(255,255,255,0.05)', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
+                {distanceRemaining !== null ? distanceRemaining.toFixed(1) : '0.0'}
+              </div>
+              <div style={{ fontSize: '0.62rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>km to dest</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
+                {formatTime(etaSeconds)}
+              </div>
+              <div style={{ fontSize: '0.62rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>est remaining</div>
+            </div>
           </div>
+
+          {/* Start button — visible only before ride starts */}
+          {!isRideStarted && (
+            <button
+              onClick={handleStartRide}
+              style={{
+                flexShrink: 0,
+                background: 'linear-gradient(135deg, #F97316, #FF5500)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '100px',
+                padding: '10px 16px',
+                fontSize: '0.78rem',
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 4px 12px rgba(249, 115, 22, 0.4)',
+                cursor: 'pointer'
+              }}
+            >
+              <Play size={14} style={{ fill: 'white' }} />
+              Start
+            </button>
+          )}
+        </div>
+
+        {!isDrawerCollapsed && (
+          <>
+            {/* Destination row indicator */}
+            {destination && (
+              <div style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: '12px',
+                padding: '10px 14px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                  <span style={{ fontSize: '1.1rem' }}>🏁</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {destination.name}
+                    </div>
+                    <div style={{ fontSize: '0.62rem', color: '#71717A' }}>
+                      OSRM computed routing route
+                    </div>
+                  </div>
+                </div>
+                
+                {routes.length > 1 && (
+                  <button 
+                    onClick={() => handleSelectRoute((selectedRouteIndex + 1) % routes.length)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#F97316',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Switch Alt Path
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Mini Cohort status */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.88rem', fontWeight: 800, color: '#fff' }}>Pack Members</span>
+                <span style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.08)', padding: '2px 8px', borderRadius: '100px', fontWeight: 700, color: '#A1A1AA' }}>
+                  {onlineRiders.length} Online
+                </span>
+              </div>
+              <button 
+                onClick={() => setShowRidersOverlay(true)} 
+                style={{ background: 'none', border: 'none', color: '#F97316', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+              >
+                Manage Pack List
+              </button>
+            </div>
+
+            {/* Pack Quick view (First 2 riders) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {onlineRiders.slice(0, 2).map((r, idx) => (
+                <div key={idx} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '10px 12px',
+                  background: 'rgba(255,255,255,0.02)',
+                  borderRadius: '10px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: r.color }} />
+                    <div>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>{r.name}</div>
+                      <div style={{ fontSize: '0.68rem', color: '#71717A' }}>{r.bike || 'No bike details'}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {r.sos && <span style={{ fontSize: '0.62rem', background: '#EF4444', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>SOS</span>}
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#A1A1AA' }}>{r.speed} km/h</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
 
-        {/* Mini Cohort status */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '0.88rem', fontWeight: 800, color: '#fff' }}>Pack Members</span>
-            <span style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.08)', padding: '2px 8px', borderRadius: '100px', fontWeight: 700, color: '#A1A1AA' }}>
-              {onlineRiders.length} Online
-            </span>
-          </div>
-          <button 
-            onClick={() => setShowRidersOverlay(true)} 
-            style={{ background: 'none', border: 'none', color: '#F97316', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
-          >
-            Manage Pack List
-          </button>
-        </div>
-
-        {/* Pack Quick view (First 2 riders) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {onlineRiders.slice(0, 2).map((r, idx) => (
-            <div key={idx} style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '10px 12px',
-              background: 'rgba(255,255,255,0.02)',
-              borderRadius: '10px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: r.color }} />
-                <div>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>{r.name}</div>
-                  <div style={{ fontSize: '0.68rem', color: '#71717A' }}>{r.bike || 'No bike details'}</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {r.sos && <span style={{ fontSize: '0.62rem', background: '#EF4444', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>SOS</span>}
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#A1A1AA' }}>{r.speed} km/h</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
       </div>
+
 
       {/* PACK LIST SHEET OVERLAY */}
       {showRidersOverlay && (

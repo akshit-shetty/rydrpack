@@ -113,20 +113,24 @@ export default function MapWidget({
     const createMarkerEl = (name, color, isMe, initialHeading) => {
       if (isMe) {
         if (isRideStarted) {
-          // Google Maps Blue Navigation Chevron (Arrow)
+          // Orange Navigation Arrow - fixed at GPS anchor, rotation via SVG transform
           const size = 32;
           const wrap = document.createElement('div');
           wrap.className = 'gmaps-nav-chevron';
+          // Do NOT rotate the wrapper - it shifts the marker anchor off the GPS point.
+          // Instead, rotate the SVG via its transform attribute.
           wrap.style.cssText = `
             position:relative; width:${size}px; height:${size}px; cursor:pointer;
             display:flex; align-items:center; justify-content:center;
-            transform: rotate(${initialHeading || 0}deg);
-            transition: transform 0.25s ease-out;
           `;
           
+          const heading = initialHeading || 0;
           wrap.innerHTML = `
-            <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" style="filter: drop-shadow(0px 3px 5px rgba(0, 0, 0, 0.45));">
-              <path d="M12 2L3 22L12 17.5L21 22L12 2Z" fill="#1A73E8" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
+            <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
+              style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.45));"
+              transform="rotate(${heading})"
+            >
+              <path d="M12 2L3 22L12 17.5L21 22L12 2Z" fill="#F97316" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
             </svg>
           `;
           return wrap;
@@ -226,7 +230,9 @@ export default function MapWidget({
         if (isMe && isRideStarted) {
           const el = existingMarker.getElement();
           if (el) {
-            el.style.transform = `rotate(${currentHeading}deg)`;
+            // Rotate the inner SVG, not the wrapper, so anchor stays at GPS point
+            const svg = el.querySelector('svg');
+            if (svg) svg.setAttribute('transform', `rotate(${currentHeading})`);
           }
         }
       } else {
