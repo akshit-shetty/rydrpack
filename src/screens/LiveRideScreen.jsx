@@ -864,6 +864,14 @@ export default function LiveRideScreen({ onShowToast }) {
     return h > 0 ? `${h}h ${m}m` : `${m > 0 ? m : 1}m`;
   };
 
+  if (!session) {
+    return (
+      <div className="page" style={{ height: '100dvh', background: '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ color: '#fff', fontFamily: 'Outfit', fontSize: '1.2rem', fontWeight: 600 }}>Initializing Live Map...</div>
+      </div>
+    );
+  }
+
   const onlineRiders = riders.filter(r => r.online);
 
   return (
