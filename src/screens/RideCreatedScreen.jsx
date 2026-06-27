@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Check, Copy, Share2, Compass, MessageSquare, Send } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { cleanRideId } from './JoinRideScreen';
 
 export default function RideCreatedScreen({ onShowToast }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const rideId = searchParams.get('rideId') || sessionStorage.getItem('rydr_last_created_ride_id');
+  const rawRideId = searchParams.get('rideId') || sessionStorage.getItem('rydr_last_created_ride_id');
+  const rideId = rawRideId ? cleanRideId(rawRideId) : '';
 
   const [inviteLink, setInviteLink] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);

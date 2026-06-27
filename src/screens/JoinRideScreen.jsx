@@ -3,6 +3,47 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Key, User, Bike, Play, ShieldCheck, MapPin } from 'lucide-react';
 import { supabase } from '../supabase';
 
+// Helper to sanitize and format a raw Ride ID
+export const cleanRideId = (id) => {
+  if (!id) return '';
+  let cleaned = id.trim().toUpperCase();
+  // Remove trailing slashes
+  cleaned = cleaned.replace(/\/+$/, '');
+  // Remove query params or hashes if present
+  cleaned = cleaned.split(/[?#]/)[0];
+  return cleaned.trim();
+};
+
+// Helper to extract a Ride ID from a potential invite URL or query string
+export const getRideIdFromInput = (input) => {
+  if (!input) return '';
+  const trimmed = input.trim();
+  try {
+    const url = new URL(trimmed);
+    const id = url.searchParams.get('rideId') || 
+               url.searchParams.get('rideid') || 
+               url.searchParams.get('ride') || 
+               url.searchParams.get('r');
+    if (id) return cleanRideId(id);
+  } catch (e) {
+    if (trimmed.includes('?')) {
+      const queryPart = trimmed.split('?')[1];
+      const params = new URLSearchParams(queryPart);
+      const id = params.get('rideId') || 
+                 params.get('rideid') || 
+                 params.get('ride') || 
+                 params.get('r');
+      if (id) return cleanRideId(id);
+    }
+  }
+  // Check if it matches pattern like "RF-XXXXXX-XXX" in the URL path segment
+  const pathPartMatch = trimmed.match(/(RF-[A-Z0-9-]+)/i);
+  if (pathPartMatch && pathPartMatch[1]) {
+    return cleanRideId(pathPartMatch[1]);
+  }
+  return cleanRideId(trimmed);
+};
+
 export default function JoinRideScreen({ onShowToast }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -18,10 +59,14 @@ export default function JoinRideScreen({ onShowToast }) {
 
   // Pre-fill fields from profile and query param
   useEffect(() => {
-    const urlRideId = searchParams.get('rideId') || searchParams.get('ride');
+    const urlRideId = searchParams.get('rideId') || 
+                      searchParams.get('rideid') || 
+                      searchParams.get('ride') || 
+                      searchParams.get('r');
     if (urlRideId) {
-      setRideIdInput(urlRideId.trim().toUpperCase());
-      fetchRidePreview(urlRideId.trim().toUpperCase());
+      const cleanedId = cleanRideId(urlRideId);
+      setRideIdInput(cleanedId);
+      fetchRidePreview(cleanedId);
     }
 
     try {
@@ -53,6 +98,12 @@ export default function JoinRideScreen({ onShowToast }) {
         .eq('ride_id', id)
         .single();
 
+      if (error) {
+        console.error('Supabase preview fetch error:', error);
+        setRidePreview({ notFound: true });
+        return;
+      }
+
       if (data) {
         setRidePreview({
           title: data.title,
@@ -75,18 +126,20 @@ export default function JoinRideScreen({ onShowToast }) {
   };
 
   const handleRideIdBlur = () => {
-    if (rideIdInput.trim()) {
-      fetchRidePreview(rideIdInput.trim().toUpperCase());
+    const cleaned = getRideIdFromInput(rideIdInput);
+    if (cleaned) {
+      setRideIdInput(cleaned);
+      fetchRidePreview(cleaned);
     }
   };
 
   const handleJoin = async (e) => {
     e.preventDefault();
-    if (!rideIdInput.trim()) { onShowToast('Please enter a Ride ID', 'error'); return; }
+    const targetRideId = getRideIdFromInput(rideIdInput);
+    if (!targetRideId) { onShowToast('Please enter a Ride ID or Invite Link', 'error'); return; }
     if (!riderName.trim()) { onShowToast('Please enter your name', 'error'); return; }
 
     setLoading(true);
-    const targetRideId = rideIdInput.trim().toUpperCase();
 
     try {
       // 1. Verify ride exists in Supabase

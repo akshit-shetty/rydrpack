@@ -5,6 +5,7 @@ import Header from '../components/Header';
 import MapWidget from '../components/MapWidget';
 import { useGeolocation, calcDistance } from '../hooks/useGeolocation';
 import { supabase } from '../supabase';
+import { cleanRideId } from './JoinRideScreen';
 
 export default function LiveRideScreen({ onShowToast }) {
   const navigate = useNavigate();
@@ -46,7 +47,11 @@ export default function LiveRideScreen({ onShowToast }) {
   // Load Session and verify ID
   useEffect(() => {
     const encoded = searchParams.get('s');
-    const paramRideId = searchParams.get('rideId') || searchParams.get('ride') || searchParams.get('r');
+    const paramRideId = searchParams.get('rideId') || 
+                        searchParams.get('rideid') || 
+                        searchParams.get('ride') || 
+                        searchParams.get('r');
+    const cleanParamRideId = paramRideId ? cleanRideId(paramRideId) : null;
     
     let activeSession = null;
 
@@ -67,14 +72,14 @@ export default function LiveRideScreen({ onShowToast }) {
         const localSession = localStorage.getItem('rydr_rider') || sessionStorage.getItem('rydr_session');
         if (localSession) {
           const parsed = JSON.parse(localSession);
-          if (!paramRideId || parsed.rideId === paramRideId) {
+          if (!cleanParamRideId || cleanRideId(parsed.rideId) === cleanParamRideId) {
             activeSession = parsed;
           }
         }
       } catch {}
     }
 
-    const finalRideId = activeSession?.rideId || paramRideId;
+    const finalRideId = cleanRideId(activeSession?.rideId) || cleanParamRideId;
     
     if (!finalRideId) {
       onShowToast('Session missing. Redirecting home...', 'error');
