@@ -22,6 +22,54 @@ const calculateBearing = (lat1, lon1, lat2, lon2) => {
   return (bearing + 360) % 360;
 };
 
+// Calculate distance from point P to segment AB
+const getDistanceToSegment = (pLat, pLng, aLat, aLng, bLat, bLng) => {
+  const latFactor = 111.32;
+  const lngFactor = 111.32 * Math.cos((aLat * Math.PI) / 180);
+
+  const px = pLng * lngFactor;
+  const py = pLat * latFactor;
+  const ax = aLng * lngFactor;
+  const ay = aLat * latFactor;
+  const bx = bLng * lngFactor;
+  const by = bLat * latFactor;
+
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+
+  if (lenSq === 0) {
+    return calcDistance(pLat, pLng, aLat, aLng);
+  }
+
+  let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+
+  const closestLng = aLng + t * (bLng - aLng);
+  const closestLat = aLat + t * (bLat - aLat);
+
+  return calcDistance(pLat, pLng, closestLat, closestLng);
+};
+
+// Calculate minimum distance from a point to a polyline (array of [lng, lat])
+const getDistanceToPolyline = (pLat, pLng, coordsList) => {
+  if (!coordsList || coordsList.length === 0) return Infinity;
+  if (coordsList.length === 1) {
+    return calcDistance(pLat, pLng, coordsList[0][1], coordsList[0][0]);
+  }
+
+  let minDistance = Infinity;
+  for (let i = 0; i < coordsList.length - 1; i++) {
+    const a = coordsList[i];
+    const b = coordsList[i + 1];
+    const dist = getDistanceToSegment(pLat, pLng, a[1], a[0], b[1], b[0]);
+    if (dist < minDistance) {
+      minDistance = dist;
+    }
+  }
+  return minDistance;
+};
+
 // Compute relative navigation arrow and instruction
 const getNavigationInstruction = (userCoords, userHeading, routeCoordinates) => {
   if (!userCoords || !routeCoordinates || routeCoordinates.length < 2) {
@@ -436,16 +484,34 @@ export default function LiveRideScreen({ onShowToast }) {
     }
   };
 
-  // Route updates on movement (300m threshold)
+  // Route updates on movement (300m threshold or off-route > 60m threshold)
   useEffect(() => {
     if (coords && destination) {
       const last = lastRouteUpdateCoords.current;
-      const moved = !last.lat || calcDistance(last.lat, last.lng, coords.lat, coords.lng) >= 0.3;
-      if (moved) {
+      
+      // Check if user moved 300m from last route fetch
+      let shouldReroute = !last.lat || calcDistance(last.lat, last.lng, coords.lat, coords.lng) >= 0.3;
+      
+      // Or, check if user is currently off-route by more than 60 meters (0.06 km)
+      if (!shouldReroute && routes.length > 0) {
+        const activeRoute = routes[selectedRouteIndex] || routes[0];
+        if (activeRoute && activeRoute.geometry && activeRoute.geometry.coordinates) {
+          const distanceToRoute = getDistanceToPolyline(
+            coords.lat,
+            coords.lng,
+            activeRoute.geometry.coordinates
+          );
+          if (distanceToRoute > 0.06) {
+            shouldReroute = true;
+          }
+        }
+      }
+      
+      if (shouldReroute) {
         fetchOSRMRoute(coords.lat, coords.lng, destination.lat, destination.lng);
       }
     }
-  }, [coords, destination]);
+  }, [coords, destination, routes, selectedRouteIndex]);
 
   // HUD Math updates — uses real OSRM route distance, not straight-line
   useEffect(() => {
