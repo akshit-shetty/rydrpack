@@ -218,6 +218,7 @@ export default function LiveRideScreen({ onShowToast }) {
   const baseOSRMDistance = useRef(null);
   const baseOSRMDuration = useRef(null);
   const lastRouteUpdateCoords = useRef({ lat: null, lng: null });
+  const lastFetchedDestination = useRef({ lat: null, lng: null });
 
   // Load Session and verify ID
   useEffect(() => {
@@ -347,7 +348,7 @@ export default function LiveRideScreen({ onShowToast }) {
             active: data.active
           });
 
-          if (data.destination_lat && !destination) {
+          if (data.destination_lat) {
             setDestination({
               name: data.destination_name || 'Destination',
               lat: Number(data.destination_lat),
@@ -379,6 +380,14 @@ export default function LiveRideScreen({ onShowToast }) {
         // Sync host's route selection to all joiners in real-time
         if (!session?.isHost && typeof data.selected_route_index === 'number') {
           setSelectedRouteIndex(data.selected_route_index);
+        }
+        // Sync new destination to joiners in real-time
+        if (!session?.isHost && data.destination_lat && data.destination_lng) {
+          setDestination({
+            name: data.destination_name || 'Custom Destination',
+            lat: Number(data.destination_lat),
+            lng: Number(data.destination_lng)
+          });
         }
       })
       .subscribe();
@@ -478,21 +487,22 @@ export default function LiveRideScreen({ onShowToast }) {
         baseOSRMDistance.current = bestRoute.distance;
         baseOSRMDuration.current = bestRoute.duration;
         lastRouteUpdateCoords.current = { lat: startLat, lng: startLng };
+        lastFetchedDestination.current = { lat: destLat, lng: destLng };
       }
     } catch (err) {
       console.warn('OSRM routing fetch failed:', err);
     }
   };
 
-  // Route updates on movement (300m threshold or off-route > 60m threshold)
+  // Route updates on movement or destination change
   useEffect(() => {
     if (coords && destination) {
       const last = lastRouteUpdateCoords.current;
+      const lastDest = lastFetchedDestination.current;
       
-      // Check if user moved 300m from last route fetch
-      let shouldReroute = !last.lat || calcDistance(last.lat, last.lng, coords.lat, coords.lng) >= 0.3;
+      const destMoved = !lastDest.lat || Math.abs(lastDest.lat - destination.lat) > 0.0001 || Math.abs(lastDest.lng - destination.lng) > 0.0001;
+      let shouldReroute = destMoved || !last.lat || calcDistance(last.lat, last.lng, coords.lat, coords.lng) >= 0.3;
       
-      // Or, check if user is currently off-route by more than 60 meters (0.06 km)
       if (!shouldReroute && routes.length > 0) {
         const activeRoute = routes[selectedRouteIndex] || routes[0];
         if (activeRoute && activeRoute.geometry && activeRoute.geometry.coordinates) {
@@ -512,6 +522,36 @@ export default function LiveRideScreen({ onShowToast }) {
       }
     }
   }, [coords, destination, routes, selectedRouteIndex]);
+
+  const handleUpdateDestination = async (lat, lng) => {
+    const newDest = {
+      name: 'Custom Destination',
+      lat: Number(lat),
+      lng: Number(lng)
+    };
+    setDestination(newDest);
+    
+    // Force OSRM route fetch immediately
+    if (coords) {
+      fetchOSRMRoute(coords.lat, coords.lng, lat, lng);
+    }
+    
+    // If user is the host, sync to Supabase
+    if (session?.isHost && rideId) {
+      try {
+        await supabase
+          .from('rides')
+          .update({
+            destination_name: 'Custom Destination',
+            destination_lat: lat,
+            destination_lng: lng
+          })
+          .eq('ride_id', rideId);
+      } catch (e) {
+        console.error('Failed to sync new destination to database:', e);
+      }
+    }
+  };
 
   // HUD Math updates — uses real OSRM route distance, not straight-line
   useEffect(() => {
@@ -845,6 +885,7 @@ export default function LiveRideScreen({ onShowToast }) {
           allRoutes={routes}
           selectedRouteIndex={selectedRouteIndex}
           onSelectRoute={handleSelectRoute}
+          onUpdateDestination={handleUpdateDestination}
           isMapCentered={isCentered}
           setIsMapCentered={setIsCentered}
           isRideStarted={isRideStarted}

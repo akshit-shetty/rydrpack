@@ -14,6 +14,7 @@ export default function MapWidget({
   allRoutes = [],
   selectedRouteIndex = 0,
   onSelectRoute,
+  onUpdateDestination,
   isMapCentered,
   setIsMapCentered,
   isRideStarted = false,
@@ -380,25 +381,39 @@ export default function MapWidget({
     const map = mapRef.current;
     if (!map) return;
 
-    if (destMarkerRef.current) {
-      destMarkerRef.current.remove();
-      destMarkerRef.current = null;
-    }
-
     if (destination && destination.lat && destination.lng) {
-      const el = document.createElement('div');
-      el.style.cssText = 'width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; filter:drop-shadow(0px 3px 6px rgba(0,0,0,0.4));';
-      el.innerHTML = `
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
-          <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2Z" fill="#F97316" stroke="#FFFFFF" stroke-width="1.8"/>
-          <circle cx="12" cy="9" r="3.5" fill="#FFFFFF"/>
-        </svg>
-      `;
-      destMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-        .setLngLat([destination.lng, destination.lat])
-        .setPopup(new maplibregl.Popup({ offset: 28 })
-          .setHTML(`<b style="font-family:Inter,sans-serif">${destination.name}</b><br><small style="color:#6B7280">Destination</small>`))
-        .addTo(map);
+      if (destMarkerRef.current) {
+        const currentPos = destMarkerRef.current.getLngLat();
+        if (Math.abs(currentPos.lat - destination.lat) > 0.0001 || Math.abs(currentPos.lng - destination.lng) > 0.0001) {
+          destMarkerRef.current.setLngLat([destination.lng, destination.lat]);
+        }
+      } else {
+        const el = document.createElement('div');
+        el.style.cssText = 'width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; filter:drop-shadow(0px 3px 6px rgba(0,0,0,0.4));';
+        el.innerHTML = `
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22C12 22 19 14.25 19 9C19 5.13 15.87 2 12 2Z" fill="#F97316" stroke="#FFFFFF" stroke-width="1.8"/>
+            <circle cx="12" cy="9" r="3.5" fill="#FFFFFF"/>
+          </svg>
+        `;
+        destMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'bottom', draggable: true })
+          .setLngLat([destination.lng, destination.lat])
+          .setPopup(new maplibregl.Popup({ offset: 28 })
+            .setHTML(`<b style="font-family:Inter,sans-serif">${destination.name}</b><br><small style="color:#6B7280">Destination</small>`))
+          .addTo(map);
+
+        destMarkerRef.current.on('dragend', () => {
+          const lngLat = destMarkerRef.current.getLngLat();
+          if (onUpdateDestination) {
+            onUpdateDestination(lngLat.lat, lngLat.lng);
+          }
+        });
+      }
+    } else {
+      if (destMarkerRef.current) {
+        destMarkerRef.current.remove();
+        destMarkerRef.current = null;
+      }
     }
   }, [destination]);
 
