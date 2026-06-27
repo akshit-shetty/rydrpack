@@ -956,53 +956,26 @@ export default function LiveRideScreen({ onShowToast }) {
           <div style={{ width: '40px', height: '4px', background: 'rgba(255,255,255,0.18)', borderRadius: '2px' }} />
         </div>
 
-        {/* Stats metrics row — always visible; contains Start button */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', textAlign: 'center', flex: 1 }}>
-            <div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
-                {speed}
-              </div>
-              <div style={{ fontSize: '0.62rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>km/h</div>
+        {/* Stats metrics row — always visible */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', textAlign: 'center' }}>
+          <div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
+              {speed}
             </div>
-            <div style={{ borderLeft: '1px solid rgba(255,255,255,0.05)', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
-              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
-                {distanceRemaining !== null ? distanceRemaining.toFixed(1) : '0.0'}
-              </div>
-              <div style={{ fontSize: '0.62rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>km to dest</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
-                {formatTime(etaSeconds)}
-              </div>
-              <div style={{ fontSize: '0.62rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>est remaining</div>
-            </div>
+            <div style={{ fontSize: '0.62rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>km/h</div>
           </div>
-
-          {/* Start button — visible only before ride starts */}
-          {!isRideStarted && (
-            <button
-              onClick={handleStartRide}
-              style={{
-                flexShrink: 0,
-                background: 'linear-gradient(135deg, #F97316, #FF5500)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '100px',
-                padding: '10px 16px',
-                fontSize: '0.78rem',
-                fontWeight: 800,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                boxShadow: '0 4px 12px rgba(249, 115, 22, 0.4)',
-                cursor: 'pointer'
-              }}
-            >
-              <Play size={14} style={{ fill: 'white' }} />
-              Start
-            </button>
-          )}
+          <div style={{ borderLeft: '1px solid rgba(255,255,255,0.05)', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
+              {distanceRemaining !== null ? distanceRemaining.toFixed(1) : '0.0'}
+            </div>
+            <div style={{ fontSize: '0.62rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>km to dest</div>
+          </div>
+          <div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
+              {formatTime(etaSeconds)}
+            </div>
+            <div style={{ fontSize: '0.62rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>est remaining</div>
+          </div>
         </div>
 
         {!isDrawerCollapsed && (
@@ -1089,6 +1062,33 @@ export default function LiveRideScreen({ onShowToast }) {
                 </div>
               ))}
             </div>
+
+            {/* Start ride button — visible only before ride starts */}
+            {!isRideStarted && (
+              <button
+                onClick={handleStartRide}
+                style={{
+                  width: '100%',
+                  background: 'linear-gradient(135deg, #F97316, #FF5500)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '12px 24px',
+                  fontSize: '0.85rem',
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 12px rgba(249, 115, 22, 0.4)',
+                  cursor: 'pointer',
+                  marginTop: '8px'
+                }}
+              >
+                <Play size={16} style={{ fill: 'white' }} />
+                Start ride
+              </button>
+            )}
           </>
         )}
 
