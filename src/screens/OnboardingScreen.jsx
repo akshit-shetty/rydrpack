@@ -276,7 +276,7 @@ export default function OnboardingScreen({ onShowToast }) {
       // Fallback local save
       localStorage.setItem('rydr_rider_profile', JSON.stringify(profile));
       localStorage.setItem('rydr_rider_id', riderId);
-      
+
       const pendingRideId = sessionStorage.getItem('rydr_join_after_onboard');
       setTimeout(() => {
         if (pendingRideId) {
@@ -336,7 +336,7 @@ export default function OnboardingScreen({ onShowToast }) {
           overflow: 'hidden',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <img src="/rydrpack_logo.svg" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <img src="/rydrpack_logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
         <span style={{
           fontFamily: 'Outfit', fontWeight: 800, fontSize: '0.95rem',

@@ -72,7 +72,7 @@ export default function LandingScreen() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             position: 'relative',
           }}>
-            <img src="/rydrpack_logo.svg" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <img src="/rydrpack_logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             {/* Live dot */}
             <span style={{
               position: 'absolute', top: '-1px', right: '-1px',
@@ -162,7 +162,7 @@ export default function LandingScreen() {
           gap: '10px', padding: '0 24px', zIndex: 10, position: 'relative',
         }}
       >
-         {features.map((f) => (
+        {features.map((f) => (
           <div key={f.label} style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center',
             gap: '6px', padding: '10px 8px',
