@@ -19,8 +19,7 @@ export default function MapWidget({
   setIsMapCentered,
   isRideStarted = false,
   currentRiderId = null,
-  showTraffic = false,
-  tomtomKey
+  showTraffic = false
 }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);

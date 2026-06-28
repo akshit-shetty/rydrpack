@@ -200,31 +200,12 @@ export default function LiveRideScreen({ onShowToast }) {
   const [isDrawerCollapsed, setIsDrawerCollapsed] = useState(false);
   const [navInstruction, setNavInstruction] = useState({ arrow: 'straight', text: 'Follow the route' });
   const [showTraffic, setShowTraffic] = useState(false);
-  const [tomtomKey, setTomtomKey] = useState(() => localStorage.getItem('rydr_tomtom_key') || '');
-  const [showTrafficKeyModal, setShowTrafficKeyModal] = useState(false);
-  const [tempKeyInput, setTempKeyInput] = useState('');
 
   const handleToggleTraffic = () => {
-    if (!showTraffic && !tomtomKey) {
-      setTempKeyInput('');
-      setShowTrafficKeyModal(true);
-    } else {
-      setShowTraffic(!showTraffic);
-    }
+    setShowTraffic(!showTraffic);
   };
 
-  const handleSaveTrafficKey = (key) => {
-    const trimmed = key.trim();
-    if (trimmed) {
-      localStorage.setItem('rydr_tomtom_key', trimmed);
-      setTomtomKey(trimmed);
-      setShowTrafficKeyModal(false);
-      setShowTraffic(true);
-      onShowToast('TomTom Traffic key saved! 🚦', 'success');
-    } else {
-      onShowToast('Please enter a valid API key', 'error');
-    }
-  };
+
 
   const handleStartRide = () => {
     setIsRideStarted(true);
@@ -618,11 +599,11 @@ export default function LiveRideScreen({ onShowToast }) {
   const handleUpdateDestination = async (lat, lng) => {
     let placeName = 'Custom Destination';
     try {
-      const url = `https://api.maptiler.com/geocoding/${lng},${lat}.json?key=${MAPTILER_KEY}`;
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_KEY}`;
       const res = await fetch(url);
       const data = await res.json();
-      if (data.features && data.features.length > 0) {
-        placeName = data.features[0].place_name || data.features[0].text || 'Custom Destination';
+      if (data.results && data.results.length > 0) {
+        placeName = data.results[0].formatted_address || 'Custom Destination';
       }
     } catch (e) {
       console.warn('Reverse geocoding failed:', e);
@@ -668,46 +649,22 @@ export default function LiveRideScreen({ onShowToast }) {
     }
   };
 
-  // HUD Math updates — uses real OSRM route distance, not straight-line
+  // HUD Math updates — strictly uses Google Maps route distance/time
   useEffect(() => {
     if (routes.length > 0) {
-      // Always use the selected route's actual road distance & duration from OSRM
       const activeRoute = routes[selectedRouteIndex] || routes[0];
-      const routeDistanceKm = activeRoute.distance / 1000; // OSRM returns metres
-      const routeDurationSec = activeRoute.duration;       // OSRM returns seconds
-
-      // If we have GPS, subtract how far we've already traveled along the route.
-      // We do this by computing the ratio of straight-line progress to total straight-
-      // line distance (start → dest). This is a good proxy without needing to snap
-      // the user position to the polyline.
-      if (coords && destination) {
-        const totalStraightLine = calcDistance(
-          lastRouteUpdateCoords.current.lat || coords.lat,
-          lastRouteUpdateCoords.current.lng || coords.lng,
-          destination.lat,
-          destination.lng
-        );
-        const currentStraightLine = calcDistance(coords.lat, coords.lng, destination.lat, destination.lng);
-        // Remaining fraction (clamped 0–1)
-        const fraction = totalStraightLine > 0.05
-          ? Math.min(1, Math.max(0, currentStraightLine / totalStraightLine))
-          : 1;
-        setDistanceRemaining(Math.max(0, routeDistanceKm * fraction));
-        setEtaSeconds(Math.max(0, Math.round(routeDurationSec * fraction)));
-      } else {
-        // No GPS yet — just show the full route distance/time
-        setDistanceRemaining(routeDistanceKm);
-        setEtaSeconds(Math.round(routeDurationSec));
-      }
-    } else if (coords && destination) {
-      // No OSRM routes yet — fall back to straight-line as placeholder
-      const d = calcDistance(coords.lat, coords.lng, destination.lat, destination.lng);
-      setDistanceRemaining(d);
-      setEtaSeconds(Math.round(d * 80));
+      const routeDistanceKm = activeRoute.distance / 1000;
+      const routeDurationSec = activeRoute.duration;
+      
+      // We rely completely on the route data fetched from Google.
+      // (The route re-fetches periodically as you move).
+      setDistanceRemaining(routeDistanceKm);
+      setEtaSeconds(Math.round(routeDurationSec));
     } else {
+      // Default to total distance covered before route is generated
       setDistanceRemaining(totalDistance);
     }
-  }, [coords, destination, totalDistance, routes, selectedRouteIndex]);
+  }, [routes, selectedRouteIndex, totalDistance]);
 
   // Pacing alerts (Check if any online rider falls behind by > 3km)
   useEffect(() => {
@@ -1008,7 +965,6 @@ export default function LiveRideScreen({ onShowToast }) {
           currentRiderId={session?.riderId}
           isHost={session?.isHost}
           showTraffic={showTraffic}
-          tomtomKey={tomtomKey}
         />
 
 
@@ -1539,104 +1495,7 @@ export default function LiveRideScreen({ onShowToast }) {
         </>
       )}
 
-      {/* TOMTOM TRAFFIC API KEY MODAL */}
-      {showTrafficKeyModal && (
-        <>
-          <div className="sidebar-overlay" onClick={() => setShowTrafficKeyModal(false)} style={{ zIndex: 200 }} />
-          <div style={{
-            position: 'fixed',
-            bottom: 0,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: '100%',
-            maxWidth: '430px',
-            background: '#121214',
-            borderTopLeftRadius: '24px',
-            borderTopRightRadius: '24px',
-            borderTop: '1px solid rgba(255,255,255,0.08)',
-            zIndex: 201,
-            padding: '24px 20px',
-            boxSizing: 'border-box',
-            animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
-          }}>
-            <div style={{ width: '40px', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', margin: '0 auto 20px' }} />
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '14px' }}>
-              <div style={{
-                width: '40px', height: '40px', borderRadius: '10px',
-                background: 'rgba(249, 115, 22, 0.1)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#F97316'
-              }}>
-                <Compass size={20} />
-              </div>
-              <div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', fontFamily: 'Outfit' }}>Setup Traffic Layer</h3>
-                <span style={{ fontSize: '0.68rem', color: '#71717A' }}>TomTom real-time traffic flow</span>
-              </div>
-            </div>
 
-            <p style={{ color: '#A1A1AA', fontSize: '0.78rem', lineHeight: '1.5', marginBottom: '18px' }}>
-              To display real-time live traffic congestion, please provide a TomTom API Key. Getting a key is 100% free and takes less than 30 seconds.
-            </p>
-
-            <a
-              href="https://developer.tomtom.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'inline-block',
-                color: '#F97316',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                textDecoration: 'none',
-                marginBottom: '20px',
-                borderBottom: '1px dashed #F97316'
-              }}
-            >
-              Get Free TomTom API Key ↗
-            </a>
-
-            <div className="form-field" style={{ marginBottom: '24px' }}>
-              <label className="field-label" style={{ fontSize: '0.68rem', color: '#A1A1AA' }}>TomTom API Key</label>
-              <input
-                type="text"
-                placeholder="Paste key here (e.g. lodHkFmG5t16...)"
-                value={tempKeyInput}
-                onChange={(e) => setTempKeyInput(e.target.value)}
-                style={{
-                  width: '100%',
-                  background: '#18181B',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: '10px',
-                  padding: '12px 14px',
-                  color: '#fff',
-                  fontSize: '0.8rem',
-                  fontFamily: 'monospace',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <button
-                onClick={() => handleSaveTrafficKey(tempKeyInput)}
-                className="btn btn-primary"
-                style={{ width: '100%', borderRadius: '12px', padding: '12px 0' }}
-              >
-                Save and Enable Traffic
-              </button>
-              <button
-                onClick={() => setShowTrafficKeyModal(false)}
-                className="btn btn-secondary"
-                style={{ width: '100%', borderRadius: '12px', padding: '12px 0' }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </>
-      )}
 
     </div>
   );
