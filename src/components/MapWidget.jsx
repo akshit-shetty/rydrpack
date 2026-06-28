@@ -2,6 +2,24 @@ import React, { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { MAP_STYLES } from '../supabase';
 
+// Helper to find the closest coordinate index in a polyline to the user's position
+const findClosestPointIndex = (coordinates, user) => {
+  if (!user || !coordinates || coordinates.length === 0) return 0;
+  let minDistance = Infinity;
+  let closestIdx = 0;
+  for (let i = 0; i < coordinates.length; i++) {
+    const pt = coordinates[i];
+    const dx = pt[0] - user.lng;
+    const dy = pt[1] - user.lat;
+    const dist = dx * dx + dy * dy;
+    if (dist < minDistance) {
+      minDistance = dist;
+      closestIdx = i;
+    }
+  }
+  return closestIdx;
+};
+
 export default function MapWidget({
   userCoords,
   userColor,
@@ -10,7 +28,7 @@ export default function MapWidget({
   riders = [],
   destination,
   userTrail = [],
-  mapStyle = 'outdoor',
+  mapStyle = 'streets',
   allRoutes = [],
   selectedRouteIndex = 0,
   onSelectRoute,
@@ -25,7 +43,7 @@ export default function MapWidget({
   const mapRef = useRef(null);
   const markersRef = useRef({}); // riderId -> Marker instance
   const destMarkerRef = useRef(null);
-  const styleUrl = MAP_STYLES[mapStyle] || MAP_STYLES.outdoor;
+  const styleUrl = MAP_STYLES[mapStyle] || MAP_STYLES.streets;
 
   // ─── Mutable refs for draw functions ────────────────────────────────────────
   // This is the key fix: map.on('load') / map.on('styledata') are set up ONCE
@@ -56,8 +74,7 @@ export default function MapWidget({
           layout: { 'line-cap': 'round', 'line-join': 'round' },
           paint: {
             'line-color': userColor || '#3B82F6',
-            'line-width': 3,
-            'line-opacity': 0.6
+            'line-width': 3
           }
         });
       }
@@ -66,7 +83,20 @@ export default function MapWidget({
 
   // Draw Routes
   const drawRouteLayers = (map) => {
-    if (!map || !map.isStyleLoaded() || !allRoutes || !allRoutes.length) return;
+    if (!map || !map.isStyleLoaded()) return;
+
+    if (!allRoutes || !allRoutes.length) {
+      // Hide all route layers
+      for (let idx = 0; idx < 10; idx++) {
+        const casingLyr = `rydr-route-casing-${idx}`;
+        const lineLyr   = `rydr-route-line-${idx}`;
+        const clickLyr  = `rydr-route-click-${idx}`;
+        if (map.getLayer(casingLyr)) map.setLayoutProperty(casingLyr, 'visibility', 'none');
+        if (map.getLayer(lineLyr))   map.setLayoutProperty(lineLyr, 'visibility', 'none');
+        if (map.getLayer(clickLyr))  map.setLayoutProperty(clickLyr, 'visibility', 'none');
+      }
+      return;
+    }
 
     const renderOrder = [];
     for (let i = 0; i < Math.min(allRoutes.length, 10); i++) {
@@ -81,22 +111,42 @@ export default function MapWidget({
       const clickLyr = `rydr-route-click-${idx}`;
       const route = allRoutes[idx];
       
+      const closestIdx = findClosestPointIndex(route.geometry.coordinates, userCoords);
+      
       let geojson;
       if (route.speedIntervals && route.speedIntervals.length > 0) {
-        const features = route.speedIntervals.map(interval => {
-          const coords = route.geometry.coordinates.slice(
-            interval.startPolylinePointIndex,
-            interval.endPolylinePointIndex + 1
-          );
-          return {
-            type: 'Feature',
-            geometry: { type: 'LineString', coordinates: coords },
-            properties: { speed: interval.speed || 'NORMAL' }
-          };
+        const features = [];
+        route.speedIntervals.forEach(interval => {
+          if (interval.endPolylinePointIndex < closestIdx) return;
+          
+          let segmentCoords;
+          if (interval.startPolylinePointIndex <= closestIdx && interval.endPolylinePointIndex >= closestIdx) {
+            segmentCoords = route.geometry.coordinates.slice(closestIdx, interval.endPolylinePointIndex + 1);
+            if (userCoords) {
+              segmentCoords.unshift([userCoords.lng, userCoords.lat]);
+            }
+          } else {
+            segmentCoords = route.geometry.coordinates.slice(interval.startPolylinePointIndex, interval.endPolylinePointIndex + 1);
+          }
+
+          if (segmentCoords.length >= 2) {
+            features.push({
+              type: 'Feature',
+              geometry: { type: 'LineString', coordinates: segmentCoords },
+              properties: { speed: interval.speed || 'NORMAL' }
+            });
+          }
         });
         geojson = { type: 'FeatureCollection', features };
       } else {
-        geojson = { type: 'Feature', geometry: route.geometry, properties: { speed: 'NORMAL' } };
+        let coordinates = route.geometry.coordinates.slice(closestIdx);
+        if (userCoords && coordinates.length > 0) {
+          coordinates.unshift([userCoords.lng, userCoords.lat]);
+        }
+        if (coordinates.length < 2 && userCoords) {
+          coordinates = [[userCoords.lng, userCoords.lat], [userCoords.lng, userCoords.lat]];
+        }
+        geojson = { type: 'Feature', geometry: { ...route.geometry, coordinates }, properties: { speed: 'NORMAL' } };
       }
 
       const isSelected = idx === selectedRouteIndex;
@@ -184,20 +234,20 @@ export default function MapWidget({
 
     // Bring selected to top
     const selCasing = `rydr-route-casing-${selectedRouteIndex}`;
-    const selLine   = `rydr-route-line-${selectedRouteIndex}`;
-    const selClick  = `rydr-route-click-${selectedRouteIndex}`;
+    const selLine = `rydr-route-line-${selectedRouteIndex}`;
+    const selClick = `rydr-route-click-${selectedRouteIndex}`;
     if (map.getLayer(selCasing)) map.moveLayer(selCasing);
-    if (map.getLayer(selLine))   map.moveLayer(selLine);
-    if (map.getLayer(selClick))  map.moveLayer(selClick);
+    if (map.getLayer(selLine)) map.moveLayer(selLine);
+    if (map.getLayer(selClick)) map.moveLayer(selClick);
 
     // Hide extra layers
     for (let idx = allRoutes.length; idx < 10; idx++) {
       const casingLyr = `rydr-route-casing-${idx}`;
-      const lineLyr   = `rydr-route-line-${idx}`;
-      const clickLyr  = `rydr-route-click-${idx}`;
+      const lineLyr = `rydr-route-line-${idx}`;
+      const clickLyr = `rydr-route-click-${idx}`;
       if (map.getLayer(casingLyr)) map.setLayoutProperty(casingLyr, 'visibility', 'none');
-      if (map.getLayer(lineLyr))   map.setLayoutProperty(lineLyr, 'visibility', 'none');
-      if (map.getLayer(clickLyr))  map.setLayoutProperty(clickLyr, 'visibility', 'none');
+      if (map.getLayer(lineLyr)) map.setLayoutProperty(lineLyr, 'visibility', 'none');
+      if (map.getLayer(clickLyr)) map.setLayoutProperty(clickLyr, 'visibility', 'none');
     }
   };
 
@@ -236,7 +286,12 @@ export default function MapWidget({
       drawRouteLayersRef.current(map);
     });
 
-    map.on('style.load', () => {
+    map.on('styledata', () => {
+      drawTrailLayersRef.current(map);
+      drawRouteLayersRef.current(map);
+    });
+
+    map.on('idle', () => {
       drawTrailLayersRef.current(map);
       drawRouteLayersRef.current(map);
     });
@@ -258,10 +313,6 @@ export default function MapWidget({
     const map = mapRef.current;
     if (map) {
       map.setStyle(styleUrl);
-      map.once('style.load', () => {
-        drawTrailLayersRef.current(map);
-        drawRouteLayersRef.current(map);
-      });
     }
   }, [styleUrl]);
 
@@ -294,7 +345,7 @@ export default function MapWidget({
     const createMarkerEl = (name, color, isMe, initialHeading) => {
       if (isMe) {
         if (isRideStarted) {
-          const size = 32;
+          const size = 48;
           const wrap = document.createElement('div');
           wrap.className = 'gmaps-nav-chevron';
           wrap.style.cssText = `
@@ -303,11 +354,25 @@ export default function MapWidget({
           `;
           const heading = initialHeading || 0;
           wrap.innerHTML = `
-            <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
-              style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.45));"
+            <svg width="${size}" height="${size}" viewBox="0 0 48 48" fill="none"
               transform="rotate(${heading})"
             >
-              <path d="M12 2L3 22L12 17.5L21 22L12 2Z" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
+              <defs>
+                <!-- Soft blur filter for the outer accuracy/direction halo -->
+                <filter id="glowBlur" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur stdDeviation="4" result="blur" />
+                </filter>
+              </defs>
+
+              <!-- Google Maps Blue Halo (GPS Accuracy/Direction Glow) -->
+              <circle cx="24" cy="24" r="20" fill="rgba(59, 130, 246, 0.26)" style="filter: url(#glowBlur);" />
+              <circle cx="24" cy="24" r="16.5" fill="none" stroke="rgba(59, 130, 246, 0.45)" stroke-width="1.2" />
+
+              <!-- White Core Circle Base for Contrast & 3D shadow -->
+              <circle cx="24" cy="24" r="12.5" fill="#FFFFFF" style="filter: drop-shadow(0px 2.5px 4px rgba(0,0,0,0.35));" />
+
+              <!-- Royal Blue Navigation Chevron in Center (Larger Size) -->
+              <path d="M24 14.5 L17.5 30 L24 27.2 L30.5 30 Z" fill="#2563EB" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round" />
             </svg>
           `;
           return wrap;
@@ -424,6 +489,10 @@ export default function MapWidget({
         if (Math.abs(currentPos.lat - destination.lat) > 0.0001 || Math.abs(currentPos.lng - destination.lng) > 0.0001) {
           destMarkerRef.current.setLngLat([destination.lng, destination.lat]);
         }
+        const popup = destMarkerRef.current.getPopup();
+        if (popup) {
+          popup.setHTML(`<b style="font-family:Inter,sans-serif">${destination.name}</b><br><small style="color:#6B7280">Destination</small>`);
+        }
       } else {
         const el = document.createElement('div');
         el.style.cssText = 'width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; filter:drop-shadow(0px 3px 6px rgba(0,0,0,0.4));';
@@ -460,7 +529,7 @@ export default function MapWidget({
     if (map) drawTrailLayersRef.current(map);
   }, [userTrail]);
 
-  // Trigger route rendering whenever routes or selection changes.
+  // Trigger route rendering whenever routes, selection, or user coords changes.
   // drawRouteLayersRef.current always holds the latest closure with fresh props.
   useEffect(() => {
     const map = mapRef.current;
@@ -469,7 +538,7 @@ export default function MapWidget({
     if (map.isStyleLoaded()) {
       drawRouteLayersRef.current(map);
     }
-  }, [allRoutes, selectedRouteIndex]);
+  }, [allRoutes, selectedRouteIndex, userCoords]);
 
   return <div ref={mapContainerRef} style={{ width: '100%', height: '100%', borderRadius: 'inherit' }} />;
 }

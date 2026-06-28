@@ -202,7 +202,11 @@ export default function JoinRideScreen({ onShowToast }) {
       };
 
       sessionStorage.setItem('rydr_session', JSON.stringify(session));
-      localStorage.setItem('rydr_rider', JSON.stringify(session));
+      try {
+        localStorage.setItem('rydr_rider', JSON.stringify(session));
+      } catch (e) {
+        console.warn('localStorage quota exceeded:', e);
+      }
 
       onShowToast('Joining pack ride… 🏍️', 'success');
 

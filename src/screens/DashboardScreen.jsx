@@ -5,6 +5,16 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import { supabase } from '../supabase';
 
+// Helper to shorten long geocoded addresses (e.g. keep first 2 segments)
+const shortenAddress = (address) => {
+  if (!address) return '';
+  const parts = address.split(',');
+  if (parts.length > 2) {
+    return parts.slice(0, 2).map(p => p.trim()).join(', ');
+  }
+  return address;
+};
+
 export default function DashboardScreen({ onShowToast }) {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -19,6 +29,7 @@ export default function DashboardScreen({ onShowToast }) {
   const [upcomingRides, setUpcomingRides] = useState([]);
   const [historyLogs, setHistoryLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeRide, setActiveRide] = useState(null);
 
   useEffect(() => {
     // 1. Initial local profile check
@@ -42,6 +53,41 @@ export default function DashboardScreen({ onShowToast }) {
 
       try {
         setLoading(true);
+
+        // check active ride
+        try {
+          const { data: hostActive } = await supabase
+            .from('rides')
+            .select('ride_id, title, destination_name')
+            .eq('host_id', localProfile.riderId)
+            .eq('active', true)
+            .maybeSingle();
+
+          if (hostActive) {
+            setActiveRide(hostActive);
+          } else {
+            const localRiderSession = localStorage.getItem('rydr_rider') || sessionStorage.getItem('rydr_session');
+            if (localRiderSession) {
+              const sessionParsed = JSON.parse(localRiderSession);
+              if (sessionParsed && sessionParsed.rideId) {
+                const { data: joinedActive } = await supabase
+                  .from('rides')
+                  .select('ride_id, title, active, destination_name')
+                  .eq('ride_id', sessionParsed.rideId)
+                  .single();
+
+                if (joinedActive && joinedActive.active) {
+                  setActiveRide(joinedActive);
+                } else {
+                  localStorage.removeItem('rydr_rider');
+                  sessionStorage.removeItem('rydr_session');
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Failed checking active ride session:', e);
+        }
 
         // a. Fetch cumulative stats from public.riders
         const { data: riderData, error: riderErr } = await supabase
@@ -146,6 +192,74 @@ export default function DashboardScreen({ onShowToast }) {
             </span>
           )}
         </div>
+
+        {/* Active Ride Resume Banner */}
+        {activeRide && (
+          <div
+            onClick={() => navigate(`/ride?rideId=${activeRide.ride_id}`)}
+            className="card animate-pulse-subtle"
+            style={{
+              background: 'linear-gradient(135deg, rgba(249,115,22,0.14) 0%, rgba(249,115,22,0.04) 100%)',
+              borderColor: 'rgba(249,115,22,0.3)',
+              borderLeft: '4px solid #F97316',
+              padding: '16px 20px',
+              marginBottom: '20px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              position: 'relative',
+              overflow: 'hidden',
+              animation: 'rydr-pulse-subtle 3s infinite alternate',
+              zIndex: 1
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span style={{
+                  width: '8px', height: '8px', borderRadius: '50%',
+                  background: '#F97316', display: 'inline-block',
+                  boxShadow: '0 0 8px #F97316',
+                  animation: 'rydr-pulse-fast 1s infinite alternate'
+                }} />
+                <span style={{ fontSize: '0.68rem', color: '#F97316', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                  Ride Session In Progress
+                </span>
+              </div>
+              <h4 style={{ fontSize: '0.92rem', fontWeight: 800, color: '#F4F4F5' }}>
+                {activeRide.title}
+              </h4>
+              <p style={{
+                color: '#A1A1AA',
+                fontSize: '0.72rem',
+                marginTop: '2px',
+                maxWidth: '220px',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }} title={activeRide.destination_name}>
+                Destination: {shortenAddress(activeRide.destination_name) || 'Set on map'}
+              </p>
+            </div>
+            <button
+              className="btn btn-primary"
+              style={{
+                padding: '5px 10px',
+                fontSize: '0.74rem',
+                borderRadius: '8px',
+                width: 'auto',
+                height: 'auto',
+                background: '#F97316',
+                border: 'none',
+                fontWeight: 700,
+                color: '#fff',
+                cursor: 'pointer'
+              }}
+            >
+              Resume
+            </button>
+          </div>
+        )}
 
         {/* Action Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px', position: 'relative', zIndex: 1 }}>
@@ -310,7 +424,22 @@ export default function DashboardScreen({ onShowToast }) {
             </div>
           ) : (
             historyLogs.map((log, idx) => (
-              <div key={idx} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', padding: '14px 16px' }}>
+              <div
+                key={idx}
+                className="card"
+                onClick={() => navigate(`/ride-details?historyId=${log.history_id || log.id}`)}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '10px',
+                  padding: '14px 16px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(249,115,22,0.35)'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{
                     width: '36px', height: '36px', borderRadius: '10px',

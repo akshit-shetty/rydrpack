@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Check, Copy, Share2, Compass, MessageSquare, Send } from 'lucide-react';
+import { ArrowLeft, Check, Copy, Share2, Compass } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { cleanRideId } from './JoinRideScreen';
+import { supabase } from '../supabase';
 
 export default function RideCreatedScreen({ onShowToast }) {
   const navigate = useNavigate();
@@ -11,7 +12,6 @@ export default function RideCreatedScreen({ onShowToast }) {
   const rideId = rawRideId ? cleanRideId(rawRideId) : '';
 
   const [inviteLink, setInviteLink] = useState('');
-  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
     if (!rideId) {
@@ -38,31 +38,64 @@ export default function RideCreatedScreen({ onShowToast }) {
     });
   };
 
-  const handleShareWhatsapp = () => {
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent('Join my Rydr pack! 🏍️\n' + inviteLink)}`);
-    setShowShareModal(false);
-  };
+  const handleInvite = async () => {
+    let rideName = 'Exciting Ride';
+    let destination = 'Set on map';
+    let rideDate = 'Upcoming';
 
-  const handleShareTelegram = () => {
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join my Rydr pack! 🏍️')}`);
-    setShowShareModal(false);
-  };
+    // Try parsing local session first as backup
+    const sessionStr = sessionStorage.getItem('rydr_session') || localStorage.getItem('rydr_rider');
+    if (sessionStr) {
+      try {
+        const parsed = JSON.parse(sessionStr);
+        if (parsed.rideTitle) rideName = parsed.rideTitle;
+        if (parsed.destination?.name) destination = parsed.destination.name;
+      } catch {}
+    }
 
-  const handleShareNative = async () => {
+    // Try fetching from database for freshest official data
+    try {
+      const { data, error } = await supabase
+        .from('rides')
+        .select('title, destination_name, ride_date')
+        .eq('ride_id', rideId)
+        .maybeSingle();
+
+      if (data) {
+        if (data.title) rideName = data.title;
+        if (data.destination_name) destination = data.destination_name;
+        if (data.ride_date) rideDate = data.ride_date;
+      }
+    } catch (e) {
+      console.warn('Failed to fetch ride details for share template:', e);
+    }
+
+    const shareMessage = `Hey Rydr! 🏍️\n\n` +
+      `You've been invited to join an exciting ride on RydrPack!\n\n` +
+      `🏍️ Ride Name: ${rideName}\n` +
+      `📍 Destination: ${destination}\n` +
+      `📅 Ride Date: ${rideDate}\n` +
+      `🔑 Ride Code: ${rideId}\n\n` +
+      `🚀 Join the Ride:\n` +
+      `${inviteLink}\n\n` +
+      `Tap the link to join your pack instantly. If prompted, enter the ride code above.\n\n` +
+      `Track your pack live, ride together, and make every mile unforgettable.\n\n` +
+      `Ride Together. Stay Together. 🤘🏍️`;
+
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join my Rydr pack!',
-          text: 'Track our motorcycle ride in real time.',
-          url: inviteLink
+          title: `Join ${rideName} Pack!`,
+          text: shareMessage
         });
-        setShowShareModal(false);
-      } catch (e) {
-        console.warn('Native share failed:', e);
+      } catch (err) {
+        console.warn('System Share Sheet aborted/failed:', err);
       }
     } else {
-      handleCopyLink();
-      setShowShareModal(false);
+      // Fallback: Copy to clipboard and Toast
+      navigator.clipboard.writeText(shareMessage).then(() => {
+        onShowToast('Invite message copied to clipboard! Share it with your crew.', 'success');
+      });
     }
   };
 
@@ -192,7 +225,7 @@ export default function RideCreatedScreen({ onShowToast }) {
 
           {/* Share button */}
           <div style={{ padding: '0 16px 16px' }}>
-            <button className="btn btn-primary" onClick={() => setShowShareModal(true)} style={{ borderRadius: '12px' }}>
+            <button className="btn btn-primary" onClick={handleInvite} style={{ borderRadius: '12px' }}>
               <Share2 size={16} />
               Invite Crew
             </button>
@@ -208,58 +241,11 @@ export default function RideCreatedScreen({ onShowToast }) {
             borderRadius: '12px',
           }}
         >
-          Enter HUD Dashboard
+          Enter ride
           <Compass size={17} />
         </button>
 
       </div>
-
-      {/* Share Drawer Modal */}
-      {showShareModal && (
-        <>
-          <div className="sidebar-overlay" onClick={() => setShowShareModal(false)} style={{ zIndex: 1000 }} />
-          <div style={{
-            position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-            width: '100%', maxWidth: '430px',
-            background: '#111113',
-            borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
-            borderTop: '1px solid rgba(255,255,255,0.08)',
-            zIndex: 1001, padding: '24px 20px',
-            boxSizing: 'border-box',
-            animation: 'slideUp 0.3s var(--ease-spring)',
-          }}>
-            <div style={{ width: '36px', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', margin: '0 auto 20px' }} />
-            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#fff', textAlign: 'center', marginBottom: '18px', fontFamily: 'Outfit' }}>
-              Share Ride Invite
-            </h3>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <button onClick={handleShareWhatsapp} className="btn" style={{ background: '#10B981', color: 'white', border: 'none', borderRadius: '12px' }}>
-                <MessageSquare size={16} /> Share via WhatsApp
-              </button>
-              <button onClick={handleShareTelegram} className="btn" style={{ background: '#0EA5E9', color: 'white', border: 'none', borderRadius: '12px' }}>
-                <Send size={16} /> Share via Telegram
-              </button>
-              <button onClick={handleCopyLink} className="btn btn-secondary" style={{ borderRadius: '12px' }}>
-                <Copy size={16} /> Copy Invite Link
-              </button>
-              <button onClick={handleShareNative} className="btn btn-primary" style={{ borderRadius: '12px' }}>
-                <Share2 size={16} /> System Share Sheet
-              </button>
-            </div>
-
-            <button
-              onClick={() => setShowShareModal(false)}
-              style={{
-                marginTop: '16px', width: '100%', background: 'none', border: 'none',
-                fontSize: '0.82rem', fontWeight: 600, color: '#52525B', padding: '10px', cursor: 'pointer',
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </>
-      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, MoreVertical, Compass, Navigation2, ShieldAlert, Award, Phone, Layers, ShieldCheck, Play, AlertOctagon, ArrowUp, ArrowUpRight, ArrowRight, ArrowUpLeft, RotateCcw, CheckCircle2, MapPin, LocateFixed } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Compass, Navigation2, ShieldAlert, Award, Phone, Layers, ShieldCheck, Play, AlertOctagon, ArrowUp, ArrowUpRight, ArrowRight, ArrowUpLeft, RotateCcw, CheckCircle2, MapPin, LocateFixed, LogOut, Share2 } from 'lucide-react';
 import Header from '../components/Header';
 import MapWidget from '../components/MapWidget';
 import { useGeolocation, calcDistance } from '../hooks/useGeolocation';
@@ -193,9 +193,10 @@ export default function LiveRideScreen({ onShowToast }) {
   const [showRidersOverlay, setShowRidersOverlay] = useState(false);
   const [showDetailsOverlay, setShowDetailsOverlay] = useState(false);
   const [showEndRideModal, setShowEndRideModal] = useState(false);
-  const [mapStyle, setMapStyle] = useState('dark'); // Dark style premium standard
+  const [mapStyle, setMapStyle] = useState('streets'); // Default to streets navigation style
   const [isCentered, setIsCentered] = useState(true);
   const [laggingRider, setLaggingRider] = useState(null); // Alert display packet
+  const [dismissedRiders, setDismissedRiders] = useState({});
   const [isRideStarted, setIsRideStarted] = useState(false);
   const [isDrawerCollapsed, setIsDrawerCollapsed] = useState(false);
   const [navInstruction, setNavInstruction] = useState({ arrow: 'straight', text: 'Follow the route' });
@@ -334,10 +335,10 @@ export default function LiveRideScreen({ onShowToast }) {
 
   // Track max speed reached during the ride session
   useEffect(() => {
-    if (speed > maxSpeed) {
+    if (isRideStarted && speed > maxSpeed) {
       setMaxSpeed(speed);
     }
-  }, [speed, maxSpeed]);
+  }, [speed, maxSpeed, isRideStarted]);
 
   // Update relative navigation instructions dynamically
   useEffect(() => {
@@ -378,6 +379,56 @@ export default function LiveRideScreen({ onShowToast }) {
             createdAt: data.created_at,
             active: data.active
           });
+
+          // Check if this user is the DB-recorded host of this ride
+          let currentProfile = null;
+          try {
+            const profileStr = localStorage.getItem('rydr_rider_profile');
+            if (profileStr) currentProfile = JSON.parse(profileStr);
+          } catch (e) {
+            console.warn('Failed parsing local profile during auto-promote:', e);
+          }
+
+          if (currentProfile && currentProfile.riderId === data.host_id) {
+            let isAlreadyHost = false;
+            try {
+              const localRider = localStorage.getItem('rydr_rider');
+              if (localRider) {
+                const parsed = JSON.parse(localRider);
+                if (parsed && parsed.isHost && parsed.rideId === rideId) {
+                  isAlreadyHost = true;
+                }
+              }
+            } catch {}
+
+            if (!isAlreadyHost) {
+              const hostSession = {
+                riderId: currentProfile.riderId,
+                rideId: rideId,
+                name: `${currentProfile.firstName} ${currentProfile.lastName}`,
+                bike: currentProfile.bikeModel ? `${currentProfile.bikeBrand} ${currentProfile.bikeModel}` : 'Bike',
+                color: '#F97316',
+                isHost: true,
+                rideTitle: data.title,
+                email: currentProfile.email,
+                contact: currentProfile.contact,
+                bloodGroup: currentProfile.bloodGroup,
+                destination: data.destination_lat ? {
+                  name: data.destination_name,
+                  lat: Number(data.destination_lat),
+                  lng: Number(data.destination_lng)
+                } : null
+              };
+              setSession(hostSession);
+              try {
+                localStorage.setItem('rydr_rider', JSON.stringify(hostSession));
+              } catch (e) {
+                console.warn('localStorage quota exceeded:', e);
+              }
+              sessionStorage.setItem('rydr_session', JSON.stringify(hostSession));
+              onShowToast('Welcome back, Host! 🏁', 'success');
+            }
+          }
 
           if (data.destination_lat) {
             setDestination({
@@ -513,7 +564,8 @@ export default function LiveRideScreen({ onShowToast }) {
         destination: { location: { latLng: { latitude: destLat, longitude: destLng } } },
         travelMode: 'DRIVE',
         routingPreference: 'TRAFFIC_AWARE',
-        extraComputations: ['TRAFFIC_ON_POLYLINE']
+        extraComputations: ['TRAFFIC_ON_POLYLINE'],
+        computeAlternativeRoutes: true
       };
 
       const res = await fetch(url, {
@@ -621,7 +673,11 @@ export default function LiveRideScreen({ onShowToast }) {
         destination: newDest
       };
       setSession(updatedSession);
-      localStorage.setItem('rydr_rider', JSON.stringify(updatedSession));
+      try {
+        localStorage.setItem('rydr_rider', JSON.stringify(updatedSession));
+      } catch (e) {
+        console.warn('localStorage quota exceeded:', e);
+      }
       sessionStorage.setItem('rydr_session', JSON.stringify(updatedSession));
     }
 
@@ -664,26 +720,56 @@ export default function LiveRideScreen({ onShowToast }) {
     }
   }, [routes, selectedRouteIndex, totalDistance]);
 
-  // Pacing alerts (Check if any online rider falls behind by > 3km)
+  // Pacing alerts (Check if any online rider falls behind by > 10km)
   useEffect(() => {
     if (!coords) return;
     const lagging = riders.find(r => {
       if (r.id === session?.riderId || !r.online || !r.lat) return false;
       const d = calcDistance(coords.lat, coords.lng, r.lat, r.lng);
-      return d > 3.0;
+      // Alert threshold: 10 Km + away from user
+      if (d <= 10.0) return false;
+      // Do not alert if already dismissed for this rider
+      if (dismissedRiders[r.id]) return false;
+      return true;
     });
 
     if (lagging) {
       const d = calcDistance(coords.lat, coords.lng, lagging.lat, lagging.lng);
       setLaggingRider({
+        id: lagging.id,
         name: lagging.name,
         distance: d,
-        status: d > 5 ? 'Needs attention' : 'Lagging slightly'
+        status: d > 15 ? 'Critical Separation' : 'Far Behind'
       });
     } else {
       setLaggingRider(null);
     }
-  }, [riders, coords, session]);
+  }, [riders, coords, session, dismissedRiders]);
+
+  // Clean up dismissed riders if they catch up (distance < 10km) or go offline
+  useEffect(() => {
+    if (!coords) return;
+    let changed = false;
+    const nextDismissed = { ...dismissedRiders };
+
+    Object.keys(nextDismissed).forEach(riderId => {
+      const r = riders.find(item => item.id === riderId);
+      if (!r || !r.online || !r.lat) {
+        delete nextDismissed[riderId];
+        changed = true;
+      } else {
+        const d = calcDistance(coords.lat, coords.lng, r.lat, r.lng);
+        if (d < 10.0) {
+          delete nextDismissed[riderId];
+          changed = true;
+        }
+      }
+    });
+
+    if (changed) {
+      setDismissedRiders(nextDismissed);
+    }
+  }, [riders, coords]);
 
   if (!session || !rideId) return null;
 
@@ -727,6 +813,15 @@ export default function LiveRideScreen({ onShowToast }) {
     }
   };
 
+  const handleExitGroup = () => {
+    setIsMenuOpen(false);
+    if (session?.isHost) {
+      navigate('/dashboard');
+    } else {
+      setShowEndRideModal(true);
+    }
+  };
+
   const handleEndRide = () => {
     setIsMenuOpen(false);
     setShowEndRideModal(true);
@@ -734,6 +829,11 @@ export default function LiveRideScreen({ onShowToast }) {
 
   const confirmEndRide = async () => {
     setShowEndRideModal(false);
+
+    if (!session) {
+      onShowToast('Session missing. Cannot end ride.', 'error');
+      return;
+    }
 
     try {
       if (session.isHost) {
@@ -801,7 +901,15 @@ export default function LiveRideScreen({ onShowToast }) {
           .eq('rider_id', session.riderId);
       }
 
-      localStorage.setItem('rydr_last_ride_summary', JSON.stringify(finalSummary));
+      // Clean up active session from storage
+      localStorage.removeItem('rydr_rider');
+      sessionStorage.removeItem('rydr_session');
+
+      try {
+        localStorage.setItem('rydr_last_ride_summary', JSON.stringify(finalSummary));
+      } catch (e) {
+        console.warn('localStorage quota exceeded:', e);
+      }
       onShowToast(session.isHost ? 'Ride completed successfully! 🏁' : 'You left the group.', 'success');
 
       setTimeout(() => {
@@ -809,7 +917,8 @@ export default function LiveRideScreen({ onShowToast }) {
       }, 800);
 
     } catch (err) {
-      console.error(err);
+      console.error('confirmEndRide catch error:', err);
+      onShowToast(`Failed to end ride: ${err.message || err}`, 'error');
       navigate('/dashboard');
     }
   };
@@ -869,11 +978,7 @@ export default function LiveRideScreen({ onShowToast }) {
         WebkitBackdropFilter: 'none',
         zIndex: 50
       }}>
-        <button className="icon-btn" onClick={() => {
-          if (window.confirm('Leave this live map and return to dashboard? Location syncing will continue.')) {
-            navigate('/dashboard');
-          }
-        }}>
+        <button className="icon-btn" onClick={() => navigate('/dashboard')}>
           <ArrowLeft size={18} />
         </button>
 
@@ -926,15 +1031,35 @@ export default function LiveRideScreen({ onShowToast }) {
                 >
                   <Award size={14} /> Pack List ({onlineRiders.length})
                 </button>
-                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '4px 0' }} />
                 <button
-                  onClick={handleEndRide}
-                  style={{ background: 'none', border: 'none', padding: '10px 12px', color: '#EF4444', fontSize: '0.8rem', textAlign: 'left', cursor: 'pointer', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'}
+                  onClick={() => { setIsMenuOpen(false); navigate(`/ride-created?rideId=${rideId}`); }}
+                  style={{ background: 'none', border: 'none', padding: '10px 12px', color: '#fff', fontSize: '0.8rem', textAlign: 'left', cursor: 'pointer', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                 >
-                  <AlertOctagon size={14} /> {session.isHost ? 'End Ride Session' : 'Exit Group'}
+                  <Share2 size={14} /> Share ride details
                 </button>
+                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '4px 0' }} />
+                {!session.isHost && (
+                  <button
+                    onClick={handleExitGroup}
+                    style={{ background: 'none', border: 'none', padding: '10px 12px', color: '#fff', fontSize: '0.8rem', textAlign: 'left', cursor: 'pointer', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                  >
+                    <LogOut size={14} /> Exit Group
+                  </button>
+                )}
+                {session.isHost && (
+                  <button
+                    onClick={handleEndRide}
+                    style={{ background: 'none', border: 'none', padding: '10px 12px', color: '#EF4444', fontSize: '0.8rem', textAlign: 'left', cursor: 'pointer', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                  >
+                    <AlertOctagon size={14} /> End Ride Session
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -971,7 +1096,7 @@ export default function LiveRideScreen({ onShowToast }) {
           onClick={toggleSOS}
           style={{
             position: 'absolute',
-            bottom: '220px',
+            bottom: '20px',
             left: '16px',
             width: '46px',
             height: '46px',
@@ -995,7 +1120,7 @@ export default function LiveRideScreen({ onShowToast }) {
         {/* Map style floating toggler */}
         <div style={{
           position: 'absolute',
-          bottom: '220px',
+          bottom: '120px',
           right: '16px',
           display: 'flex',
           flexDirection: 'column',
@@ -1005,7 +1130,15 @@ export default function LiveRideScreen({ onShowToast }) {
           <button
             className="icon-btn"
             onClick={() => setMapStyle(mapStyle === 'dark' ? 'streets' : 'dark')}
-            style={{ background: 'rgba(18, 18, 20, 0.85)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '50%', width: '44px', height: '44px' }}
+            style={{
+              background: 'rgba(18, 18, 20, 0.85)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              borderRadius: '50%',
+              width: '44px',
+              height: '44px',
+              color: '#fff'
+            }}
+            title="Toggle Map Style"
           >
             <Layers size={16} />
           </button>
@@ -1053,12 +1186,38 @@ export default function LiveRideScreen({ onShowToast }) {
                 {laggingRider.name} is {laggingRider.distance.toFixed(1)} km behind you.
               </div>
             </div>
-            <button
-              onClick={() => onShowToast(`Zooming to ${laggingRider.name}`, 'success')}
-              style={{ background: '#fff', border: 'none', color: '#EF4444', fontWeight: 700, fontSize: '0.68rem', padding: '4px 10px', borderRadius: '100px', cursor: 'pointer' }}
-            >
-              Locate
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button
+                onClick={() => onShowToast(`Zooming to ${laggingRider.name}`, 'success')}
+                style={{ background: '#fff', border: 'none', color: '#EF4444', fontWeight: 700, fontSize: '0.68rem', padding: '4px 10px', borderRadius: '100px', cursor: 'pointer' }}
+              >
+                Locate
+              </button>
+              <button
+                onClick={() => {
+                  setDismissedRiders(prev => ({ ...prev, [laggingRider.id]: true }));
+                  setLaggingRider(null);
+                }}
+                style={{
+                  background: 'rgba(255,255,255,0.15)',
+                  border: 'none',
+                  color: '#fff',
+                  fontWeight: 800,
+                  fontSize: '0.7rem',
+                  width: '22px',
+                  height: '22px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+                title="Dismiss alert"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -1069,11 +1228,11 @@ export default function LiveRideScreen({ onShowToast }) {
         borderTop: '1px solid rgba(255,255,255,0.08)',
         borderTopLeftRadius: '24px',
         borderTopRightRadius: '24px',
-        padding: '16px 20px 24px',
+        padding: isDrawerCollapsed ? '8px 20px 10px' : '16px 20px 24px',
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
-        gap: '16px',
+        gap: isDrawerCollapsed ? '6px' : '16px',
         zIndex: 50
       }}>
         {/* Clickable collapse/expand handle */}
@@ -1083,7 +1242,7 @@ export default function LiveRideScreen({ onShowToast }) {
             cursor: 'pointer',
             display: 'flex',
             justifyContent: 'center',
-            paddingBottom: '4px',
+            paddingBottom: isDrawerCollapsed ? '0px' : '4px',
             userSelect: 'none'
           }}
         >
@@ -1093,24 +1252,26 @@ export default function LiveRideScreen({ onShowToast }) {
         {/* Stats metrics row — always visible */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', textAlign: 'center' }}>
           <div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
+            <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
               {speed}
             </div>
-            <div style={{ fontSize: '0.62rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>km/h</div>
+            <div style={{ fontSize: '0.58rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>km/h</div>
           </div>
           <div style={{ borderLeft: '1px solid rgba(255,255,255,0.05)', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
+            <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
               {distanceRemaining !== null ? distanceRemaining.toFixed(1) : '0.0'}
             </div>
-            <div style={{ fontSize: '0.62rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>km to dest</div>
+            <div style={{ fontSize: '0.58rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>km to dest</div>
           </div>
           <div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
+            <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#fff', fontFamily: 'Outfit' }}>
               {formatTime(etaSeconds)}
             </div>
-            <div style={{ fontSize: '0.62rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>est remaining</div>
+            <div style={{ fontSize: '0.58rem', color: '#71717A', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>est remaining</div>
           </div>
         </div>
+
+
 
         {!isDrawerCollapsed && (
           <>
@@ -1197,33 +1358,34 @@ export default function LiveRideScreen({ onShowToast }) {
               ))}
             </div>
 
-            {/* Start ride button — visible only before ride starts */}
-            {!isRideStarted && (
-              <button
-                onClick={handleStartRide}
-                style={{
-                  width: '100%',
-                  background: 'linear-gradient(135deg, #F97316, #FF5500)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '12px',
-                  padding: '12px 24px',
-                  fontSize: '0.85rem',
-                  fontWeight: 800,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  boxShadow: '0 4px 12px rgba(249, 115, 22, 0.4)',
-                  cursor: 'pointer',
-                  marginTop: '8px'
-                }}
-              >
-                <Play size={16} style={{ fill: 'white' }} />
-                Start ride
-              </button>
-            )}
           </>
+        )}
+
+        {/* Start ride button — always at the bottom of the container */}
+        {!isRideStarted && (
+          <button
+            onClick={handleStartRide}
+            style={{
+              width: '100%',
+              background: 'linear-gradient(135deg, #F97316, #FF5500)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              padding: isDrawerCollapsed ? '10px 24px' : '12px 24px',
+              fontSize: '0.85rem',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 12px rgba(249, 115, 22, 0.4)',
+              cursor: 'pointer',
+              marginTop: isDrawerCollapsed ? '4px' : '8px'
+            }}
+          >
+            <Play size={16} style={{ fill: 'white' }} />
+            Start ride
+          </button>
         )}
 
       </div>
@@ -1295,6 +1457,30 @@ export default function LiveRideScreen({ onShowToast }) {
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {/* Distance Difference from current user */}
+                    {(() => {
+                      if (r.id === session?.riderId) {
+                        return <span style={{ fontSize: '0.68rem', color: '#71717A', fontWeight: 600, paddingRight: '4px' }}>You</span>;
+                      }
+                      if (!r.online || !r.lat || !coords) {
+                        return <span style={{ fontSize: '0.68rem', color: '#3F3F46', paddingRight: '4px' }}>—</span>;
+                      }
+                      const diff = calcDistance(coords.lat, coords.lng, r.lat, r.lng);
+                      const isFar = diff >= 10.0;
+                      return (
+                        <span style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          color: isFar ? '#EF4444' : '#10B981',
+                          background: isFar ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.05)',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          border: isFar ? '1px solid rgba(239,68,68,0.15)' : '1px solid rgba(16,185,129,0.1)'
+                        }}>
+                          {diff.toFixed(1)} km
+                        </span>
+                      );
+                    })()}
                     {r.bloodGroup && <span style={{ fontSize: '0.68rem', background: 'rgba(239,68,68,0.08)', padding: '2px 6px', borderRadius: '4px', color: '#EF4444', fontWeight: 600 }}>🩸 {r.bloodGroup}</span>}
                     {r.contact && (
                       <a href={`tel:${r.contact}`} className="icon-btn" style={{ width: '30px', height: '30px', borderRadius: '50%' }}>

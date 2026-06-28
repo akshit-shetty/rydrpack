@@ -181,7 +181,11 @@ export default function CreateRideScreen({ onShowToast }) {
       };
 
       sessionStorage.setItem('rydr_session', JSON.stringify(hostSession));
-      localStorage.setItem('rydr_rider', JSON.stringify(hostSession));
+      try {
+        localStorage.setItem('rydr_rider', JSON.stringify(hostSession));
+      } catch (e) {
+        console.warn('localStorage quota exceeded:', e);
+      }
       sessionStorage.setItem('rydr_last_created_ride_id', rideId);
 
       onShowToast('Ride published! 🏍️', 'success');

@@ -699,3 +699,13 @@ body {
 
 .maplibregl-popup-tip { border-top-color: #18181b !important; }
 .maplibregl-ctrl-attrib { display: none !important; }
+
+@keyframes rydr-pulse-subtle {
+  0% { opacity: 0.96; }
+  100% { opacity: 1; box-shadow: 0 0 15px rgba(249,115,22,0.12); }
+}
+
+@keyframes rydr-pulse-fast {
+  0% { transform: scale(0.8); opacity: 0.4; }
+  100% { transform: scale(1.2); opacity: 1; }
+}

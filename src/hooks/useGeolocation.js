@@ -74,18 +74,20 @@ export function useGeolocation({ rideId, session, enabled }) {
 
       // Speed calculation
       let speedKmh = 0;
-      if (gpsSpeed !== null && gpsSpeed > 0) {
-        speedKmh = Math.round(gpsSpeed * 3.6);
+      if (gpsSpeed !== null) {
+        // If the hardware reports speed, use it directly (including 0!)
+        speedKmh = gpsSpeed > 0 ? Math.round(gpsSpeed * 3.6) : 0;
       } else if (state.lastLat !== null && state.lastGPSTime !== null) {
         const d = calcDistance(state.lastLat, state.lastLng, lat, lng);
         const hrs = (now - state.lastGPSTime) / 3600000;
-        if (hrs > 0 && d > 0.01 && d / hrs < 200) {
+        // Only calculate speed if distance is significant (> 15 meters) to filter out GPS drift
+        if (hrs > 0 && d >= 0.015 && d / hrs < 200) {
           speedKmh = Math.round(d / hrs);
         }
       }
 
       // Filter jitter
-      if (speedKmh < 3) speedKmh = 0;
+      if (speedKmh < 5) speedKmh = 0;
 
       // Accumulate distance
       if (state.lastLat !== null && speedKmh > 0) {

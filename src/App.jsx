@@ -10,6 +10,7 @@ import RideCreatedScreen from './screens/RideCreatedScreen';
 import JoinRideScreen from './screens/JoinRideScreen';
 import LiveRideScreen from './screens/LiveRideScreen';
 import PostRideScreen from './screens/PostRideScreen';
+import RideDetailsScreen from './screens/RideDetailsScreen';
 import Toast from './components/Toast';
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/ride-created" element={<RideCreatedScreen onShowToast={showToast} />} />
           <Route path="/join-ride" element={<JoinRideScreen onShowToast={showToast} />} />
           <Route path="/ride" element={<LiveRideScreen onShowToast={showToast} />} />
+          <Route path="/ride-details" element={<RideDetailsScreen onShowToast={showToast} />} />
           <Route path="/post-ride" element={<PostRideScreen onShowToast={showToast} />} />
         </Routes>
 
