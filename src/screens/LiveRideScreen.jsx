@@ -1,11 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, MoreVertical, Compass, Navigation2, ShieldAlert, Award, Phone, Layers, ShieldCheck, Play, AlertOctagon, ArrowUp, ArrowUpRight, ArrowRight, ArrowUpLeft, RotateCcw, CheckCircle2, MapPin } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Compass, Navigation2, ShieldAlert, Award, Phone, Layers, ShieldCheck, Play, AlertOctagon, ArrowUp, ArrowUpRight, ArrowRight, ArrowUpLeft, RotateCcw, CheckCircle2, MapPin, LocateFixed } from 'lucide-react';
 import Header from '../components/Header';
 import MapWidget from '../components/MapWidget';
 import { useGeolocation, calcDistance } from '../hooks/useGeolocation';
 import { supabase } from '../supabase';
 import { cleanRideId } from './JoinRideScreen';
+
+// Google Polyline Decoder
+function decodePolyline(encoded) {
+  let points = [];
+  let index = 0, len = encoded.length;
+  let lat = 0, lng = 0;
+  while (index < len) {
+    let b, shift = 0, result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lat += dlat;
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lng += dlng;
+    points.push([lng / 1e5, lat / 1e5]);
+  }
+  return points;
+}
 
 // Calculate bearing between two coordinates
 const calculateBearing = (lat1, lon1, lat2, lon2) => {
@@ -17,7 +45,7 @@ const calculateBearing = (lat1, lon1, lat2, lon2) => {
   const x =
     Math.cos(lat1Rad) * Math.sin(lat2Rad) -
     Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
-  
+
   let bearing = (Math.atan2(y, x) * 180) / Math.PI;
   return (bearing + 360) % 360;
 };
@@ -94,7 +122,7 @@ const getNavigationInstruction = (userCoords, userHeading, routeCoordinates) => 
 
   // Look ahead by about 4 coordinates (approx 20-30 meters)
   const targetIndex = Math.min(closestIndex + 4, routeCoordinates.length - 1);
-  
+
   // If near the end of the route
   if (closestIndex >= routeCoordinates.length - 2) {
     return { arrow: 'arrive', text: 'Arriving at destination', angle: 0 };
@@ -155,7 +183,7 @@ export default function LiveRideScreen({ onShowToast }) {
   const [session, setSession] = useState(null);
   const [rideId, setRideId] = useState(null);
   const [rideData, setRideData] = useState(null);
-  
+
   // Geolocation trigger
   const [gpsRequested, setGpsRequested] = useState(false);
   const [gpsPermissionState, setGpsPermissionState] = useState('prompt');
@@ -173,9 +201,30 @@ export default function LiveRideScreen({ onShowToast }) {
   const [navInstruction, setNavInstruction] = useState({ arrow: 'straight', text: 'Follow the route' });
   const [showTraffic, setShowTraffic] = useState(false);
   const [tomtomKey, setTomtomKey] = useState(() => localStorage.getItem('rydr_tomtom_key') || '');
-  const [riderLocations, setRiderLocations] = useState({});
+  const [showTrafficKeyModal, setShowTrafficKeyModal] = useState(false);
+  const [tempKeyInput, setTempKeyInput] = useState('');
 
-  const handleToggleTraffic = () => setShowTraffic(!showTraffic);
+  const handleToggleTraffic = () => {
+    if (!showTraffic && !tomtomKey) {
+      setTempKeyInput('');
+      setShowTrafficKeyModal(true);
+    } else {
+      setShowTraffic(!showTraffic);
+    }
+  };
+
+  const handleSaveTrafficKey = (key) => {
+    const trimmed = key.trim();
+    if (trimmed) {
+      localStorage.setItem('rydr_tomtom_key', trimmed);
+      setTomtomKey(trimmed);
+      setShowTrafficKeyModal(false);
+      setShowTraffic(true);
+      onShowToast('TomTom Traffic key saved! 🚦', 'success');
+    } else {
+      onShowToast('Please enter a valid API key', 'error');
+    }
+  };
 
   const handleStartRide = () => {
     setIsRideStarted(true);
@@ -215,8 +264,9 @@ export default function LiveRideScreen({ onShowToast }) {
   const [destination, setDestination] = useState(null);
   const [etaSeconds, setEtaSeconds] = useState(null);
   const [distanceRemaining, setDistanceRemaining] = useState(null);
+
+  // Supabase live cohort list
   const [riders, setRiders] = useState([]);
-  const channelRef = useRef(null);
 
   // Base state tracking refs
   const baseOSRMDistance = useRef(null);
@@ -227,12 +277,12 @@ export default function LiveRideScreen({ onShowToast }) {
   // Load Session and verify ID
   useEffect(() => {
     const encoded = searchParams.get('s');
-    const paramRideId = searchParams.get('rideId') || 
-                        searchParams.get('rideid') || 
-                        searchParams.get('ride') || 
-                        searchParams.get('r');
+    const paramRideId = searchParams.get('rideId') ||
+      searchParams.get('rideid') ||
+      searchParams.get('ride') ||
+      searchParams.get('r');
     const cleanParamRideId = paramRideId ? cleanRideId(paramRideId) : null;
-    
+
     let activeSession = null;
 
     if (encoded) {
@@ -256,11 +306,11 @@ export default function LiveRideScreen({ onShowToast }) {
             activeSession = parsed;
           }
         }
-      } catch {}
+      } catch { }
     }
 
     const finalRideId = cleanRideId(activeSession?.rideId) || cleanParamRideId;
-    
+
     if (!finalRideId) {
       onShowToast('Session missing. Redirecting home...', 'error');
       navigate('/dashboard');
@@ -268,7 +318,7 @@ export default function LiveRideScreen({ onShowToast }) {
     }
 
     setRideId(finalRideId);
-    
+
     if (activeSession) {
       setSession(activeSession);
       if (activeSession.destination) {
@@ -291,7 +341,7 @@ export default function LiveRideScreen({ onShowToast }) {
             setGpsRequested(true);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, []);
 
@@ -451,7 +501,7 @@ export default function LiveRideScreen({ onShowToast }) {
             color: row.color,
             lat: Number(row.lat),
             lng: Number(row.lng),
-            speed: r.speed,
+            speed: row.speed,
             heading: Number(row.heading),
             online: row.online,
             sos: row.sos,
@@ -470,140 +520,124 @@ export default function LiveRideScreen({ onShowToast }) {
           });
         }
       })
-      .on('broadcast', { event: 'route_change' }, (payload) => {
-        if (!session?.isHost) setSelectedRouteIndex(payload.payload.routeIndex);
-      })
-      .on('broadcast', { event: 'destination_change' }, (payload) => {
-        if (!session?.isHost) setDestination(payload.payload.destination);
-      })
       .subscribe();
-
-    channelRef.current = channel;
 
     return () => {
       channel.unsubscribe();
-      channelRef.current = null;
     };
-  }, [rideId, session?.isHost]);
+  }, [rideId]);
 
-  // Fetch Google Routes (replaces OSRM)
+  // Fetch Google Directions
   const fetchGoogleRoute = async (startLat, startLng, destLat, destLng) => {
     try {
-      const { GOOGLE_MAPS_KEY } = await import('../supabase');
       const url = 'https://routes.googleapis.com/directions/v2:computeRoutes';
       const body = {
         origin: { location: { latLng: { latitude: startLat, longitude: startLng } } },
         destination: { location: { latLng: { latitude: destLat, longitude: destLng } } },
-        travelMode: 'TWO_WHEELER',
-        routingPreference: 'TRAFFIC_AWARE',
-        computeAlternativeRoutes: true
+        travelMode: 'DRIVE',
+        routingPreference: 'TRAFFIC_AWARE'
       };
-      
+
+      const { GOOGLE_MAPS_KEY } = await import('../supabase');
+
       const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': GOOGLE_MAPS_KEY,
-          'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.steps'
+          'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline'
         },
         body: JSON.stringify(body)
       });
       const data = await res.json();
-      
-      if (data.routes && data.routes.length) {
-        // Decode polyline helper
-        const decodePolyline = (encoded) => {
-          if (!encoded) return [];
-          const poly = [];
-          let index = 0, len = encoded.length;
-          let lat = 0, lng = 0;
-          while (index < len) {
-            let b, shift = 0, result = 0;
-            do {
-              b = encoded.charCodeAt(index++) - 63;
-              result |= (b & 0x1f) << shift;
-              shift += 5;
-            } while (b >= 0x20);
-            let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
-            lat += dlat;
-            shift = 0;
-            result = 0;
-            do {
-              b = encoded.charCodeAt(index++) - 63;
-              result |= (b & 0x1f) << shift;
-              shift += 5;
-            } while (b >= 0x20);
-            let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
-            lng += dlng;
-            poly.push([lng / 1e5, lat / 1e5]);
-          }
-          return poly;
-        };
 
+      if (data.routes && data.routes.length) {
         const mappedRoutes = data.routes.map(r => ({
           distance: r.distanceMeters,
-          duration: parseInt((r.duration || '0s').replace('s', ''), 10),
+          duration: parseInt(r.duration.replace('s', ''), 10),
           geometry: {
             type: 'LineString',
             coordinates: decodePolyline(r.polyline.encodedPolyline)
-          },
-          steps: r.legs?.[0]?.steps || []
+          }
         }));
-        
+
         setRoutes(mappedRoutes);
-        
-        // Setup base stats if host
-        if (session?.isHost) {
-          const activeRoute = mappedRoutes[selectedRouteIndex] || mappedRoutes[0];
-          baseOSRMDistance.current = activeRoute.distance;
-          baseOSRMDuration.current = activeRoute.duration;
-        }
-        
+        // Always default to route 0 (fastest) on initial fetch
+        setSelectedRouteIndex(0);
+        const bestRoute = mappedRoutes[0];
+        baseOSRMDistance.current = bestRoute.distance;
+        baseOSRMDuration.current = bestRoute.duration;
         lastRouteUpdateCoords.current = { lat: startLat, lng: startLng };
         lastFetchedDestination.current = { lat: destLat, lng: destLng };
       }
-    } catch (error) {
-      console.error('Error fetching Google Route:', error);
+    } catch (err) {
+      console.warn('Google routing fetch failed:', err);
     }
   };
 
   // Route updates on movement or destination change
   useEffect(() => {
-    if (coords && destination) {
-      const last = lastRouteUpdateCoords.current;
-      const lastDest = lastFetchedDestination.current;
-      
-      const destMoved = !lastDest.lat || Math.abs(lastDest.lat - destination.lat) > 0.0001 || Math.abs(lastDest.lng - destination.lng) > 0.0001;
-      let shouldReroute = destMoved || !last.lat || calcDistance(last.lat, last.lng, coords.lat, coords.lng) >= 0.3;
-      
-      if (!shouldReroute && routes.length > 0) {
-        const activeRoute = routes[selectedRouteIndex] || routes[0];
-        if (activeRoute && activeRoute.geometry && activeRoute.geometry.coordinates) {
-          const distanceToRoute = getDistanceToPolyline(
-            coords.lat,
-            coords.lng,
-            activeRoute.geometry.coordinates
-          );
-          if (distanceToRoute > 0.06) {
-            shouldReroute = true;
-          }
+    if (destination) {
+      // Determine the start point for routing: host's GPS
+      let routeStartCoords = null;
+      if (session?.isHost) {
+        routeStartCoords = coords;
+      } else {
+        const hostRider = riders.find(r => r.isHost);
+        if (hostRider && hostRider.lat && hostRider.lng) {
+          routeStartCoords = { lat: hostRider.lat, lng: hostRider.lng };
         }
       }
-      
-      if (shouldReroute) {
-        fetchGoogleRoute(coords.lat, coords.lng, destination.lat, destination.lng);
+
+      if (routeStartCoords) {
+        const last = lastRouteUpdateCoords.current;
+        const lastDest = lastFetchedDestination.current;
+
+        const destMoved = !lastDest.lat || Math.abs(lastDest.lat - destination.lat) > 0.0001 || Math.abs(lastDest.lng - destination.lng) > 0.0001;
+        let shouldReroute = destMoved || !last.lat || calcDistance(last.lat, last.lng, routeStartCoords.lat, routeStartCoords.lng) >= 0.3;
+
+        if (!shouldReroute && routes.length > 0) {
+          const activeRoute = routes[selectedRouteIndex] || routes[0];
+          if (activeRoute && activeRoute.geometry && activeRoute.geometry.coordinates) {
+            const distanceToRoute = getDistanceToPolyline(
+              routeStartCoords.lat,
+              routeStartCoords.lng,
+              activeRoute.geometry.coordinates
+            );
+            if (distanceToRoute > 0.06) {
+              shouldReroute = true;
+            }
+          }
+        }
+
+        if (shouldReroute) {
+          fetchGoogleRoute(routeStartCoords.lat, routeStartCoords.lng, destination.lat, destination.lng);
+        }
       }
     }
-  }, [coords, destination, routes, selectedRouteIndex]);
+  }, [coords, destination, routes, selectedRouteIndex, riders, session]);
 
   const handleUpdateDestination = async (lat, lng) => {
+    let placeName = 'Custom Destination';
+    try {
+      const { MAPTILER_KEY } = await import('../supabase'); // assuming it's exported there, or just use it if already imported
+      const url = `https://api.maptiler.com/geocoding/${lng},${lat}.json?key=${MAPTILER_KEY}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.features && data.features.length > 0) {
+        placeName = data.features[0].place_name || data.features[0].text || 'Custom Destination';
+      }
+    } catch (e) {
+      console.warn('Reverse geocoding failed:', e);
+    }
+
     const newDest = {
-      name: 'Custom Destination',
+      name: placeName,
       lat: Number(lat),
       lng: Number(lng)
     };
     setDestination(newDest);
-    
+
     // Update local session caches to match the new destination
     if (session) {
       const updatedSession = {
@@ -614,31 +648,23 @@ export default function LiveRideScreen({ onShowToast }) {
       localStorage.setItem('rydr_rider', JSON.stringify(updatedSession));
       sessionStorage.setItem('rydr_session', JSON.stringify(updatedSession));
     }
-    
-    // Force route fetch immediately
+
+    // Force Google route fetch immediately
     if (coords) {
       fetchGoogleRoute(coords.lat, coords.lng, lat, lng);
     }
-    
+
     // If user is the host, sync to Supabase
     if (session?.isHost && rideId) {
       try {
         await supabase
           .from('rides')
           .update({
-            destination_name: 'Custom Destination',
+            destination_name: placeName,
             destination_lat: lat,
             destination_lng: lng
           })
           .eq('ride_id', rideId);
-          
-        if (channelRef.current) {
-          channelRef.current.send({
-            type: 'broadcast',
-            event: 'destination_change',
-            payload: { destination: newDest }
-          });
-        }
       } catch (e) {
         console.error('Failed to sync new destination to database:', e);
       }
@@ -707,25 +733,7 @@ export default function LiveRideScreen({ onShowToast }) {
     }
   }, [riders, coords, session]);
 
-  // Reverse geocode when Pack List opens
-  useEffect(() => {
-    if (showRidersOverlay) {
-      riders.forEach(async (r) => {
-        if (!r.lat || !r.online || riderLocations[r.id]) return;
-        try {
-          const { MAPTILER_KEY } = await import('../supabase');
-          const url = `https://api.maptiler.com/geocoding/${r.lng},${r.lat}.json?key=${MAPTILER_KEY}`;
-          const res = await fetch(url);
-          const data = await res.json();
-          if (data.features && data.features.length > 0) {
-            const place = data.features[0].text;
-            setRiderLocations(prev => ({ ...prev, [r.id]: place }));
-          }
-        } catch (e) {}
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showRidersOverlay]);
+  if (!session || !rideId) return null;
 
   const handleEnableGPS = () => {
     setGpsRequested(true);
@@ -843,7 +851,7 @@ export default function LiveRideScreen({ onShowToast }) {
 
       localStorage.setItem('rydr_last_ride_summary', JSON.stringify(finalSummary));
       onShowToast(session.isHost ? 'Ride completed successfully! 🏁' : 'You left the group.', 'success');
-      
+
       setTimeout(() => {
         navigate('/post-ride');
       }, 800);
@@ -862,19 +870,11 @@ export default function LiveRideScreen({ onShowToast }) {
     return h > 0 ? `${h}h ${m}m` : `${m > 0 ? m : 1}m`;
   };
 
-  if (!session) {
-    return (
-      <div className="page" style={{ height: '100dvh', background: '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#fff', fontFamily: 'Outfit', fontSize: '1.2rem', fontWeight: 600 }}>Initializing Live Map...</div>
-      </div>
-    );
-  }
-
   const onlineRiders = riders.filter(r => r.online);
 
   return (
     <div className="page" style={{ height: '100dvh', background: '#09090b', display: 'flex', flexDirection: 'column' }}>
-      
+
       {/* GPS Permission Request Overlay */}
       {!gpsRequested && gpsPermissionState !== 'granted' && (
         <div style={{
@@ -924,12 +924,12 @@ export default function LiveRideScreen({ onShowToast }) {
         }}>
           <ArrowLeft size={18} />
         </button>
-        
+
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#fff', fontFamily: 'Outfit' }}>
             {rideData?.title || 'Live Ride'}
           </span>
-          <span style={{ fontSize: '0.62rem', color: '#3B82F6', fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.5px', marginTop: '1px' }}>
+          <span style={{ fontSize: '0.62rem', color: '#F97316', fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.5px', marginTop: '1px' }}>
             ID: {rideId}
           </span>
         </div>
@@ -958,7 +958,7 @@ export default function LiveRideScreen({ onShowToast }) {
                 flexDirection: 'column',
                 gap: '2px'
               }}>
-                <button 
+                <button
                   onClick={() => { setIsMenuOpen(false); setShowDetailsOverlay(true); }}
                   style={{ background: 'none', border: 'none', padding: '10px 12px', color: '#fff', fontSize: '0.8rem', textAlign: 'left', cursor: 'pointer', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}
                   onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
@@ -966,7 +966,7 @@ export default function LiveRideScreen({ onShowToast }) {
                 >
                   <Compass size={14} /> Ride details
                 </button>
-                <button 
+                <button
                   onClick={() => { setIsMenuOpen(false); setShowRidersOverlay(true); }}
                   style={{ background: 'none', border: 'none', padding: '10px 12px', color: '#fff', fontSize: '0.8rem', textAlign: 'left', cursor: 'pointer', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}
                   onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
@@ -975,7 +975,7 @@ export default function LiveRideScreen({ onShowToast }) {
                   <Award size={14} /> Pack List ({onlineRiders.length})
                 </button>
                 <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '4px 0' }} />
-                <button 
+                <button
                   onClick={handleEndRide}
                   style={{ background: 'none', border: 'none', padding: '10px 12px', color: '#EF4444', fontSize: '0.8rem', textAlign: 'left', cursor: 'pointer', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
                   onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)'}
@@ -989,33 +989,10 @@ export default function LiveRideScreen({ onShowToast }) {
         </div>
       </div>
 
-      {/* Navigation Instruction HUD */}
-      {isRideStarted && navInstruction && (
-        <div style={{
-          position: 'absolute',
-          top: '60px',
-          left: '16px',
-          right: '16px',
-          background: 'rgba(249, 115, 22, 0.95)',
-          padding: '12px 16px',
-          borderRadius: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          zIndex: 45,
-          color: 'white',
-          boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)'
-        }}>
-          <div style={{ background: 'rgba(0,0,0,0.2)', padding: '8px', borderRadius: '50%' }}>
-            {renderNavigationArrow(navInstruction.arrow)}
-          </div>
-          <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{navInstruction.text}</div>
-        </div>
-      )}
-
       {/* Live Map viewport */}
       <div className="map-viewport">
-        <MapWidget 
+        {!isCentered && (<button onClick={() => setIsCentered(true)} style={{ position: 'absolute', top: '100px', right: '16px', zIndex: 1000, background: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255, 255, 255, 0.2)', color: '#3B82F6', padding: '10px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}><LocateFixed size={22} /></button>)}
+        <MapWidget
           userCoords={coords}
           userColor={session.color}
           userName={session.name}
@@ -1032,12 +1009,15 @@ export default function LiveRideScreen({ onShowToast }) {
           setIsMapCentered={setIsCentered}
           isRideStarted={isRideStarted}
           currentRiderId={session?.riderId}
+          isHost={session?.isHost}
           showTraffic={showTraffic}
           tomtomKey={tomtomKey}
         />
 
+
+
         {/* Floating SOS Trigger Button */}
-        <button 
+        <button
           onClick={toggleSOS}
           style={{
             position: 'absolute',
@@ -1072,18 +1052,18 @@ export default function LiveRideScreen({ onShowToast }) {
           gap: '8px',
           zIndex: 40
         }}>
-          <button 
-            className="icon-btn" 
-            onClick={() => setMapStyle(mapStyle === 'dark' ? 'outdoor' : mapStyle === 'outdoor' ? 'satellite' : 'dark')}
+          <button
+            className="icon-btn"
+            onClick={() => setMapStyle(mapStyle === 'dark' ? 'streets' : 'dark')}
             style={{ background: 'rgba(18, 18, 20, 0.85)', border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '50%', width: '44px', height: '44px' }}
           >
             <Layers size={16} />
           </button>
-          <button 
-            className="icon-btn" 
+          <button
+            className="icon-btn"
             onClick={() => setIsCentered(true)}
             style={{
-              background: isCentered ? 'linear-gradient(135deg, #3B82F6, #2563EB)' : 'rgba(18, 18, 20, 0.85)',
+              background: isCentered ? 'linear-gradient(135deg, #F97316, #FF5500)' : 'rgba(18, 18, 20, 0.85)',
               border: isCentered ? 'none' : '1px solid rgba(255, 255, 255, 0.15)',
               borderRadius: '50%',
               width: '44px',
@@ -1100,7 +1080,7 @@ export default function LiveRideScreen({ onShowToast }) {
         {laggingRider && (
           <div style={{
             position: 'absolute',
-            top: '120px',
+            top: '84px',
             left: '16px',
             right: '16px',
             background: 'rgba(239, 68, 68, 0.95)',
@@ -1123,7 +1103,7 @@ export default function LiveRideScreen({ onShowToast }) {
                 {laggingRider.name} is {laggingRider.distance.toFixed(1)} km behind you.
               </div>
             </div>
-            <button 
+            <button
               onClick={() => onShowToast(`Zooming to ${laggingRider.name}`, 'success')}
               style={{ background: '#fff', border: 'none', color: '#EF4444', fontWeight: 700, fontSize: '0.68rem', padding: '4px 10px', borderRadius: '100px', cursor: 'pointer' }}
             >
@@ -1196,7 +1176,7 @@ export default function LiveRideScreen({ onShowToast }) {
                 alignItems: 'center'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                  <MapPin size={18} style={{ color: '#3B82F6', flexShrink: 0 }} />
+                  <MapPin size={18} style={{ color: '#F97316', flexShrink: 0 }} />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {destination.name}
@@ -1206,14 +1186,14 @@ export default function LiveRideScreen({ onShowToast }) {
                     </div>
                   </div>
                 </div>
-                
-                {routes.length > 1 && (
-                  <button 
+
+                {session?.isHost && routes.length > 1 && (
+                  <button
                     onClick={() => handleSelectRoute((selectedRouteIndex + 1) % routes.length)}
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: '#3B82F6',
+                      color: '#F97316',
                       fontSize: '0.72rem',
                       fontWeight: 700,
                       cursor: 'pointer'
@@ -1225,7 +1205,7 @@ export default function LiveRideScreen({ onShowToast }) {
               </div>
             )}
 
-            {/* Map Layers & Live Traffic Settings */}
+            {/* Live Traffic Settings */}
             <div style={{
               background: 'rgba(255,255,255,0.02)',
               border: '1px solid rgba(255,255,255,0.05)',
@@ -1236,30 +1216,6 @@ export default function LiveRideScreen({ onShowToast }) {
               gap: '12px'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fff' }}>Map Style</span>
-                <select
-                  value={mapStyle}
-                  onChange={(e) => setMapStyle(e.target.value)}
-                  style={{
-                    background: '#18181B',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '6px',
-                    color: '#fff',
-                    fontSize: '0.72rem',
-                    padding: '4px 8px',
-                    fontFamily: 'Inter, sans-serif',
-                    outline: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value="outdoor">Outdoor Trails</option>
-                  <option value="streets">Streets Navigation</option>
-                  <option value="satellite">Satellite Hybrid</option>
-                  <option value="dark">Sleek Dark Mode</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '10px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fff' }}>Live Traffic Flow</span>
                   <span style={{ fontSize: '0.62rem', color: '#71717A' }}>Color-coded road congestion</span>
@@ -1267,7 +1223,7 @@ export default function LiveRideScreen({ onShowToast }) {
                 <button
                   onClick={handleToggleTraffic}
                   style={{
-                    background: showTraffic ? '#3B82F6' : 'rgba(255,255,255,0.06)',
+                    background: showTraffic ? '#F97316' : 'rgba(255,255,255,0.06)',
                     border: 'none',
                     borderRadius: '100px',
                     width: '38px',
@@ -1299,9 +1255,9 @@ export default function LiveRideScreen({ onShowToast }) {
                   {onlineRiders.length} Online
                 </span>
               </div>
-              <button 
-                onClick={() => setShowRidersOverlay(true)} 
-                style={{ background: 'none', border: 'none', color: '#3B82F6', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+              <button
+                onClick={() => setShowRidersOverlay(true)}
+                style={{ background: 'none', border: 'none', color: '#F97316', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
               >
                 Manage Pack List
               </button>
@@ -1339,7 +1295,7 @@ export default function LiveRideScreen({ onShowToast }) {
                 onClick={handleStartRide}
                 style={{
                   width: '100%',
-                  background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                  background: 'linear-gradient(135deg, #F97316, #FF5500)',
                   color: 'white',
                   border: 'none',
                   borderRadius: '12px',
@@ -1395,11 +1351,7 @@ export default function LiveRideScreen({ onShowToast }) {
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '20px' }}>
-              {riders.map((r, idx) => {
-                const hostRider = riders.find(hr => hr.isHost);
-                const dToHost = (hostRider && hostRider.lat && r.lat && !r.isHost) ? calcDistance(hostRider.lat, hostRider.lng, r.lat, r.lng) : 0;
-                
-                return (
+              {riders.map((r, idx) => (
                 <div key={idx} style={{
                   padding: '12px 14px',
                   background: 'rgba(255,255,255,0.02)',
@@ -1425,23 +1377,10 @@ export default function LiveRideScreen({ onShowToast }) {
                       {r.name.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         {r.name}
-                        {r.id === session?.riderId ? ' (You)' : ''}
+                        {r.isHost && <span style={{ fontSize: '0.58rem', background: '#F97316', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>HOST</span>}
                       </div>
-                      
-                      {riderLocations[r.id] && (
-                        <div style={{ fontSize: '0.65rem', color: '#71717A', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <MapPin size={10} /> {riderLocations[r.id]}
-                        </div>
-                      )}
-                      
-                      {!r.isHost && hostRider && (
-                        <div style={{ fontSize: '0.65rem', color: '#F59E0B', marginTop: '2px', fontWeight: 600 }}>
-                          {dToHost > 0 ? `${dToHost.toFixed(1)} km behind host` : 'With host'}
-                        </div>
-                      )}
-                      
                       <div style={{ fontSize: '0.68rem', color: '#71717A', marginTop: '1px' }}>
                         {r.bike || 'Bike Details not set'} · {r.online ? 'Online' : 'Offline'}
                       </div>
@@ -1456,8 +1395,7 @@ export default function LiveRideScreen({ onShowToast }) {
                     )}
                   </div>
                 </div>
-              );
-            })}
+              ))}
             </div>
 
             <button className="btn btn-secondary" onClick={() => setShowRidersOverlay(false)} style={{ width: '100%' }}>
@@ -1513,7 +1451,7 @@ export default function LiveRideScreen({ onShowToast }) {
                 <span>Pace Target</span>
                 <strong style={{ color: '#fff', textTransform: 'capitalize' }}>{rideData?.pace}</strong>
               </div>
-              
+
               {rideData?.safetyNotes && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
                   <span>Safety Notes & Guidelines</span>
@@ -1596,6 +1534,105 @@ export default function LiveRideScreen({ onShowToast }) {
                 onClick={() => setShowEndRideModal(false)}
                 className="btn btn-secondary"
                 style={{ borderRadius: '12px' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* TOMTOM TRAFFIC API KEY MODAL */}
+      {showTrafficKeyModal && (
+        <>
+          <div className="sidebar-overlay" onClick={() => setShowTrafficKeyModal(false)} style={{ zIndex: 200 }} />
+          <div style={{
+            position: 'fixed',
+            bottom: 0,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '100%',
+            maxWidth: '430px',
+            background: '#121214',
+            borderTopLeftRadius: '24px',
+            borderTopRightRadius: '24px',
+            borderTop: '1px solid rgba(255,255,255,0.08)',
+            zIndex: 201,
+            padding: '24px 20px',
+            boxSizing: 'border-box',
+            animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}>
+            <div style={{ width: '40px', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', margin: '0 auto 20px' }} />
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '14px' }}>
+              <div style={{
+                width: '40px', height: '40px', borderRadius: '10px',
+                background: 'rgba(249, 115, 22, 0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#F97316'
+              }}>
+                <Compass size={20} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', fontFamily: 'Outfit' }}>Setup Traffic Layer</h3>
+                <span style={{ fontSize: '0.68rem', color: '#71717A' }}>TomTom real-time traffic flow</span>
+              </div>
+            </div>
+
+            <p style={{ color: '#A1A1AA', fontSize: '0.78rem', lineHeight: '1.5', marginBottom: '18px' }}>
+              To display real-time live traffic congestion, please provide a TomTom API Key. Getting a key is 100% free and takes less than 30 seconds.
+            </p>
+
+            <a
+              href="https://developer.tomtom.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-block',
+                color: '#F97316',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                textDecoration: 'none',
+                marginBottom: '20px',
+                borderBottom: '1px dashed #F97316'
+              }}
+            >
+              Get Free TomTom API Key ↗
+            </a>
+
+            <div className="form-field" style={{ marginBottom: '24px' }}>
+              <label className="field-label" style={{ fontSize: '0.68rem', color: '#A1A1AA' }}>TomTom API Key</label>
+              <input
+                type="text"
+                placeholder="Paste key here (e.g. lodHkFmG5t16...)"
+                value={tempKeyInput}
+                onChange={(e) => setTempKeyInput(e.target.value)}
+                style={{
+                  width: '100%',
+                  background: '#18181B',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '10px',
+                  padding: '12px 14px',
+                  color: '#fff',
+                  fontSize: '0.8rem',
+                  fontFamily: 'monospace',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                onClick={() => handleSaveTrafficKey(tempKeyInput)}
+                className="btn btn-primary"
+                style={{ width: '100%', borderRadius: '12px', padding: '12px 0' }}
+              >
+                Save and Enable Traffic
+              </button>
+              <button
+                onClick={() => setShowTrafficKeyModal(false)}
+                className="btn btn-secondary"
+                style={{ width: '100%', borderRadius: '12px', padding: '12px 0' }}
               >
                 Cancel
               </button>

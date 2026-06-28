@@ -19,7 +19,8 @@ export default function MapWidget({
   setIsMapCentered,
   isRideStarted = false,
   currentRiderId = null,
-  showTraffic = false
+  showTraffic = false,
+  tomtomKey
 }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -206,7 +207,7 @@ export default function MapWidget({
       drawRouteLayersRef.current(map);
     });
 
-    map.on('styledata', () => {
+    map.on('style.load', () => {
       drawTrailLayersRef.current(map);
       drawRouteLayersRef.current(map);
     });
