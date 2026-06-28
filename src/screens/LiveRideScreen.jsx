@@ -4,7 +4,7 @@ import { ArrowLeft, MoreVertical, Compass, Navigation2, ShieldAlert, Award, Phon
 import Header from '../components/Header';
 import MapWidget from '../components/MapWidget';
 import { useGeolocation, calcDistance } from '../hooks/useGeolocation';
-import { supabase } from '../supabase';
+import { supabase, GOOGLE_MAPS_KEY, MAPTILER_KEY } from '../supabase';
 import { cleanRideId } from './JoinRideScreen';
 
 // Google Polyline Decoder
@@ -538,8 +538,6 @@ export default function LiveRideScreen({ onShowToast }) {
         routingPreference: 'TRAFFIC_AWARE'
       };
 
-      const { GOOGLE_MAPS_KEY } = await import('../supabase');
-
       const res = await fetch(url, {
         method: 'POST',
         headers: {
@@ -620,7 +618,6 @@ export default function LiveRideScreen({ onShowToast }) {
   const handleUpdateDestination = async (lat, lng) => {
     let placeName = 'Custom Destination';
     try {
-      const { MAPTILER_KEY } = await import('../supabase'); // assuming it's exported there, or just use it if already imported
       const url = `https://api.maptiler.com/geocoding/${lng},${lat}.json?key=${MAPTILER_KEY}`;
       const res = await fetch(url);
       const data = await res.json();

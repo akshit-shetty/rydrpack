@@ -44,7 +44,7 @@ export default function MapWidget({
     if (userTrail.length >= 2) {
       const srcId = 'user-trail';
       const lyrId = 'user-trail-layer';
-      const geojson = { type: 'Feature', geometry: { type: 'LineString', coordinates: userTrail } };
+      const geojson = { type: 'Feature', geometry: { type: 'LineString', coordinates: userTrail }, properties: {} };
 
       if (map.getSource(srcId)) {
         map.getSource(srcId).setData(geojson);
@@ -81,7 +81,7 @@ export default function MapWidget({
       const lineLyr = `rydr-route-line-${idx}`;
       const clickLyr = `rydr-route-click-${idx}`;
       const route = allRoutes[idx];
-      const geojson = { type: 'Feature', geometry: route.geometry };
+      const geojson = { type: 'Feature', geometry: route.geometry, properties: {} };
       const isSelected = idx === selectedRouteIndex;
 
       if (map.getSource(srcId)) {
