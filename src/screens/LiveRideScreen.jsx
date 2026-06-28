@@ -199,11 +199,7 @@ export default function LiveRideScreen({ onShowToast }) {
   const [isRideStarted, setIsRideStarted] = useState(false);
   const [isDrawerCollapsed, setIsDrawerCollapsed] = useState(false);
   const [navInstruction, setNavInstruction] = useState({ arrow: 'straight', text: 'Follow the route' });
-  const [showTraffic, setShowTraffic] = useState(false);
 
-  const handleToggleTraffic = () => {
-    setShowTraffic(!showTraffic);
-  };
 
 
 
@@ -516,7 +512,8 @@ export default function LiveRideScreen({ onShowToast }) {
         origin: { location: { latLng: { latitude: startLat, longitude: startLng } } },
         destination: { location: { latLng: { latitude: destLat, longitude: destLng } } },
         travelMode: 'DRIVE',
-        routingPreference: 'TRAFFIC_AWARE'
+        routingPreference: 'TRAFFIC_AWARE',
+        extraComputations: ['TRAFFIC_ON_POLYLINE']
       };
 
       const res = await fetch(url, {
@@ -524,7 +521,7 @@ export default function LiveRideScreen({ onShowToast }) {
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': GOOGLE_MAPS_KEY,
-          'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline'
+          'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.travelAdvisory.speedReadingIntervals'
         },
         body: JSON.stringify(body)
       });
@@ -537,7 +534,8 @@ export default function LiveRideScreen({ onShowToast }) {
           geometry: {
             type: 'LineString',
             coordinates: decodePolyline(r.polyline.encodedPolyline)
-          }
+          },
+          speedIntervals: r.travelAdvisory?.speedReadingIntervals || []
         }));
 
         setRoutes(mappedRoutes);
@@ -964,7 +962,6 @@ export default function LiveRideScreen({ onShowToast }) {
           isRideStarted={isRideStarted}
           currentRiderId={session?.riderId}
           isHost={session?.isHost}
-          showTraffic={showTraffic}
         />
 
 
@@ -1157,48 +1154,6 @@ export default function LiveRideScreen({ onShowToast }) {
                 )}
               </div>
             )}
-
-            {/* Live Traffic Settings */}
-            <div style={{
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.05)',
-              borderRadius: '12px',
-              padding: '12px 14px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fff' }}>Live Traffic Flow</span>
-                  <span style={{ fontSize: '0.62rem', color: '#71717A' }}>Color-coded road congestion</span>
-                </div>
-                <button
-                  onClick={handleToggleTraffic}
-                  style={{
-                    background: showTraffic ? '#F97316' : 'rgba(255,255,255,0.06)',
-                    border: 'none',
-                    borderRadius: '100px',
-                    width: '38px',
-                    height: '20px',
-                    position: 'relative',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s'
-                  }}
-                >
-                  <div style={{
-                    width: '14px',
-                    height: '14px',
-                    background: '#fff',
-                    borderRadius: '50%',
-                    position: 'absolute',
-                    top: '3px',
-                    left: showTraffic ? '21px' : '3px',
-                    transition: 'left 0.2s'
-                  }} />
-                </button>
-              </div>
-            </div>
 
             {/* Mini Cohort status */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -19,7 +19,7 @@ export default function MapWidget({
   setIsMapCentered,
   isRideStarted = false,
   currentRiderId = null,
-  showTraffic = false
+  isHost = false
 }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -80,20 +80,38 @@ export default function MapWidget({
       const lineLyr = `rydr-route-line-${idx}`;
       const clickLyr = `rydr-route-click-${idx}`;
       const route = allRoutes[idx];
-      const geojson = { type: 'Feature', geometry: route.geometry, properties: {} };
+      
+      let geojson;
+      if (route.speedIntervals && route.speedIntervals.length > 0) {
+        const features = route.speedIntervals.map(interval => {
+          const coords = route.geometry.coordinates.slice(
+            interval.startPolylinePointIndex,
+            interval.endPolylinePointIndex + 1
+          );
+          return {
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: coords },
+            properties: { speed: interval.speed || 'NORMAL' }
+          };
+        });
+        geojson = { type: 'FeatureCollection', features };
+      } else {
+        geojson = { type: 'Feature', geometry: route.geometry, properties: { speed: 'NORMAL' } };
+      }
+
       const isSelected = idx === selectedRouteIndex;
 
       if (map.getSource(srcId)) {
         map.getSource(srcId).setData(geojson);
       } else {
-        map.addSource(srcId, { type: 'geojson', data: geojson });
+        map.addSource(srcId, { type: 'geojson', data: geojson, lineMetrics: true });
       }
 
       // White outline casing for contrast
       if (map.getLayer(casingLyr)) {
         map.setLayoutProperty(casingLyr, 'visibility', 'visible');
         map.setPaintProperty(casingLyr, 'line-width', isSelected ? 11 : 7.5);
-        map.setPaintProperty(casingLyr, 'line-opacity', isSelected ? 0.9 : 0.3);
+        map.setPaintProperty(casingLyr, 'line-opacity', isSelected ? 0.35 : 0.2);
       } else {
         map.addLayer({
           id: casingLyr,
@@ -108,12 +126,18 @@ export default function MapWidget({
         });
       }
 
-      // Route lines
+      // Route lines with traffic coloring
       if (map.getLayer(lineLyr)) {
         map.setLayoutProperty(lineLyr, 'visibility', 'visible');
-        map.setPaintProperty(lineLyr, 'line-color', isSelected ? '#3B82F6' : '#71717A');
+        map.setPaintProperty(lineLyr, 'line-color', isSelected ? [
+          'match',
+          ['get', 'speed'],
+          'SLOW', '#F59E0B',
+          'TRAFFIC_JAM', '#EF4444',
+          '#3B82F6' // default NORMAL
+        ] : '#71717A');
         map.setPaintProperty(lineLyr, 'line-width', isSelected ? 7 : 4.5);
-        map.setPaintProperty(lineLyr, 'line-opacity', isSelected ? 0.55 : 0.7);
+        map.setPaintProperty(lineLyr, 'line-opacity', isSelected ? 0.9 : 0.7);
       } else {
         map.addLayer({
           id: lineLyr,
@@ -121,9 +145,15 @@ export default function MapWidget({
           source: srcId,
           layout: { 'line-cap': 'round', 'line-join': 'round', 'visibility': 'visible' },
           paint: {
-            'line-color': isSelected ? '#3B82F6' : '#71717A',
+            'line-color': isSelected ? [
+              'match',
+              ['get', 'speed'],
+              'SLOW', '#F59E0B',
+              'TRAFFIC_JAM', '#EF4444',
+              '#3B82F6' // default NORMAL
+            ] : '#71717A',
             'line-width': isSelected ? 7 : 4.5,
-            'line-opacity': isSelected ? 0.55 : 0.7
+            'line-opacity': isSelected ? 0.9 : 0.7
           }
         });
       }
@@ -226,7 +256,13 @@ export default function MapWidget({
   // Update style
   useEffect(() => {
     const map = mapRef.current;
-    if (map) map.setStyle(styleUrl);
+    if (map) {
+      map.setStyle(styleUrl);
+      map.once('style.load', () => {
+        drawTrailLayersRef.current(map);
+        drawRouteLayersRef.current(map);
+      });
+    }
   }, [styleUrl]);
 
   // Center / Follow camera
@@ -432,40 +468,8 @@ export default function MapWidget({
 
     if (map.isStyleLoaded()) {
       drawRouteLayersRef.current(map);
-    } else {
-      map.once('load', () => drawRouteLayersRef.current(map));
     }
   }, [allRoutes, selectedRouteIndex]);
-
-  // Toggle Traffic Layer
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
-
-    const lyrId = 'google-traffic';
-    const srcId = 'google-traffic-src';
-
-    if (showTraffic) {
-      if (!map.getSource(srcId)) {
-        map.addSource(srcId, {
-          type: 'raster',
-          tiles: ['https://mt1.google.com/vt?lyrs=traffic&x={x}&y={y}&z={z}'],
-          tileSize: 256
-        });
-      }
-      if (!map.getLayer(lyrId)) {
-        map.addLayer({
-          id: lyrId,
-          type: 'raster',
-          source: srcId,
-          paint: { 'raster-opacity': 0.8 }
-        }, map.getLayer('waterway') ? 'waterway' : undefined);
-      }
-    } else {
-      if (map.getLayer(lyrId)) map.removeLayer(lyrId);
-      if (map.getSource(srcId)) map.removeSource(srcId);
-    }
-  }, [showTraffic]);
 
   return <div ref={mapContainerRef} style={{ width: '100%', height: '100%', borderRadius: 'inherit' }} />;
 }
