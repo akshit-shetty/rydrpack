@@ -72,7 +72,7 @@ export default function LandingScreen() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             position: 'relative',
           }}>
-            <img src="/rydrpack_logo.jpg" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src="/rydrpack_logo.svg" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             {/* Live dot */}
             <span style={{
               position: 'absolute', top: '-1px', right: '-1px',
