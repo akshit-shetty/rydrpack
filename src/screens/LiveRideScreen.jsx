@@ -555,52 +555,96 @@ export default function LiveRideScreen({ onShowToast }) {
     };
   }, [rideId]);
 
-  // Fetch Google Directions
+  // Fetch routing with multiple alternative route choices
   const fetchGoogleRoute = async (startLat, startLng, destLat, destLng) => {
     try {
-      const url = 'https://routes.googleapis.com/directions/v2:computeRoutes';
-      const body = {
-        origin: { location: { latLng: { latitude: startLat, longitude: startLng } } },
-        destination: { location: { latLng: { latitude: destLat, longitude: destLng } } },
-        travelMode: 'DRIVE',
-        routingPreference: 'TRAFFIC_AWARE',
-        extraComputations: ['TRAFFIC_ON_POLYLINE'],
-        computeAlternativeRoutes: true
+      const fetchGoogle = async (mode) => {
+        try {
+          const url = 'https://routes.googleapis.com/directions/v2:computeRoutes';
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': GOOGLE_MAPS_KEY,
+              'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline'
+            },
+            body: JSON.stringify({
+              origin: { location: { latLng: { latitude: startLat, longitude: startLng } } },
+              destination: { location: { latLng: { latitude: destLat, longitude: destLng } } },
+              travelMode: mode,
+              polylineQuality: 'HIGH_QUALITY',
+              computeAlternativeRoutes: true
+            })
+          });
+          const data = await res.json();
+          if (data.routes && data.routes.length) {
+            return data.routes.map(r => ({
+              distance: r.distanceMeters,
+              duration: parseInt(r.duration.replace('s', ''), 10),
+              geometry: {
+                type: 'LineString',
+                coordinates: decodePolyline(r.polyline.encodedPolyline)
+              },
+              source: mode === 'TWO_WHEELER' ? 'Bike Route' : 'Alternative',
+              speedIntervals: []
+            }));
+          }
+        } catch (e) {
+          console.warn(`Google ${mode} routing failed:`, e);
+        }
+        return [];
       };
 
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': GOOGLE_MAPS_KEY,
-          'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.travelAdvisory.speedReadingIntervals'
-        },
-        body: JSON.stringify(body)
-      });
-      const data = await res.json();
+      // Query TWO_WHEELER (primary bike-friendly route) and DRIVE (alternative paths) in parallel
+      const [bikeRoutes, driveRoutes] = await Promise.all([
+        fetchGoogle('TWO_WHEELER'),
+        fetchGoogle('DRIVE')
+      ]);
 
-      if (data.routes && data.routes.length) {
-        const mappedRoutes = data.routes.map(r => ({
-          distance: r.distanceMeters,
-          duration: parseInt(r.duration.replace('s', ''), 10),
-          geometry: {
-            type: 'LineString',
-            coordinates: decodePolyline(r.polyline.encodedPolyline)
-          },
-          speedIntervals: r.travelAdvisory?.speedReadingIntervals || []
-        }));
+      let candidates = [...bikeRoutes, ...driveRoutes];
 
-        setRoutes(mappedRoutes);
-        // Always default to route 0 (fastest) on initial fetch
+      // Fallback to OSRM only if Google routes are completely empty
+      if (candidates.length === 0) {
+        try {
+          const bikeUrl = `https://router.project-osrm.org/route/v1/bicycle/${startLng},${startLat};${destLng},${destLat}?overview=full&geometries=geojson&alternatives=true&steps=true`;
+          const res = await fetch(bikeUrl);
+          const data = await res.json();
+          if (data.code === 'Ok' && data.routes) {
+            candidates = data.routes.map(r => ({
+              distance: Math.round(r.distance),
+              duration: Math.round(r.duration),
+              geometry: r.geometry,
+              source: 'OSRM Bike',
+              speedIntervals: []
+            }));
+          }
+        } catch (e) {
+          console.warn('OSRM fallback failed:', e);
+        }
+      }
+
+      // Deduplicate alternatives
+      const combined = [];
+      for (const cand of candidates) {
+        if (!cand.geometry || !cand.geometry.coordinates || cand.geometry.coordinates.length < 2) continue;
+        const isDuplicate = combined.some(r => Math.abs(r.distance - cand.distance) < 350);
+        if (!isDuplicate) {
+          combined.push(cand);
+        }
+        if (combined.length >= 3) break;
+      }
+
+      if (combined.length > 0) {
+        setRoutes(combined);
         setSelectedRouteIndex(0);
-        const bestRoute = mappedRoutes[0];
+        const bestRoute = combined[0];
         baseOSRMDistance.current = bestRoute.distance;
         baseOSRMDuration.current = bestRoute.duration;
         lastRouteUpdateCoords.current = { lat: startLat, lng: startLng };
         lastFetchedDestination.current = { lat: destLat, lng: destLng };
       }
     } catch (err) {
-      console.warn('Google routing fetch failed:', err);
+      console.warn('Routing fetch failed:', err);
     }
   };
 
@@ -1293,7 +1337,7 @@ export default function LiveRideScreen({ onShowToast }) {
                       {destination.name}
                     </div>
                     <div style={{ fontSize: '0.62rem', color: '#71717A' }}>
-                      OSRM computed routing route
+                      {routes.length > 1 ? `${routes.length} routes on map` : 'Active routing path'}
                     </div>
                   </div>
                 </div>

@@ -2,6 +2,16 @@ import React, { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { MAP_STYLES } from '../supabase';
 
+// Helper to project point P onto line segment AB, returning the closest point strictly on the road segment
+const projectPointOnSegment = (p, a, b) => {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return a;
+  const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lenSq));
+  return [a[0] + t * dx, a[1] + t * dy];
+};
+
 // Helper to find the closest coordinate index in a polyline to the user's position
 const findClosestPointIndex = (coordinates, user) => {
   if (!user || !coordinates || coordinates.length === 0) return 0;
@@ -18,6 +28,24 @@ const findClosestPointIndex = (coordinates, user) => {
     }
   }
   return closestIdx;
+};
+
+// Returns a road-accurate route slice that stays strictly on the road (never pulling off-road or across lanes)
+const getCleanRemainingCoords = (coordinates, user, isRideStarted) => {
+  if (!coordinates || coordinates.length === 0) return [];
+  if (!isRideStarted || !user) return coordinates;
+
+  const closestIdx = findClosestPointIndex(coordinates, user);
+  if (closestIdx >= coordinates.length - 1) {
+    return coordinates.slice(Math.max(0, coordinates.length - 2));
+  }
+
+  // Snapped start point strictly on the road segment
+  const pA = coordinates[closestIdx];
+  const pB = coordinates[closestIdx + 1];
+  const snapped = projectPointOnSegment([user.lng, user.lat], pA, pB);
+
+  return [snapped, ...coordinates.slice(closestIdx + 1)];
 };
 
 export default function MapWidget({
@@ -53,6 +81,8 @@ export default function MapWidget({
   // draw functions with the LATEST props.
   const drawRouteLayersRef = useRef(null);
   const drawTrailLayersRef = useRef(null);
+  const onSelectRouteRef = useRef(onSelectRoute);
+  onSelectRouteRef.current = onSelectRoute;
 
   // Draw Trails
   const drawTrailLayers = (map) => {
@@ -111,24 +141,14 @@ export default function MapWidget({
       const clickLyr = `rydr-route-click-${idx}`;
       const route = allRoutes[idx];
       
-      const closestIdx = findClosestPointIndex(route.geometry.coordinates, userCoords);
+      const isRideActive = isRideStarted && !!userCoords;
+      const closestIdx = isRideActive ? findClosestPointIndex(route.geometry.coordinates, userCoords) : 0;
       
       let geojson;
       if (route.speedIntervals && route.speedIntervals.length > 0) {
         const features = [];
         route.speedIntervals.forEach(interval => {
-          if (interval.endPolylinePointIndex < closestIdx) return;
-          
-          let segmentCoords;
-          if (interval.startPolylinePointIndex <= closestIdx && interval.endPolylinePointIndex >= closestIdx) {
-            segmentCoords = route.geometry.coordinates.slice(closestIdx, interval.endPolylinePointIndex + 1);
-            if (userCoords) {
-              segmentCoords.unshift([userCoords.lng, userCoords.lat]);
-            }
-          } else {
-            segmentCoords = route.geometry.coordinates.slice(interval.startPolylinePointIndex, interval.endPolylinePointIndex + 1);
-          }
-
+          const segmentCoords = route.geometry.coordinates.slice(interval.startPolylinePointIndex, interval.endPolylinePointIndex + 1);
           if (segmentCoords.length >= 2) {
             features.push({
               type: 'Feature',
@@ -137,16 +157,11 @@ export default function MapWidget({
             });
           }
         });
-        geojson = { type: 'FeatureCollection', features };
+        geojson = features.length > 0 
+          ? { type: 'FeatureCollection', features } 
+          : { type: 'Feature', geometry: route.geometry, properties: { speed: 'NORMAL' } };
       } else {
-        let coordinates = route.geometry.coordinates.slice(closestIdx);
-        if (userCoords && coordinates.length > 0) {
-          coordinates.unshift([userCoords.lng, userCoords.lat]);
-        }
-        if (coordinates.length < 2 && userCoords) {
-          coordinates = [[userCoords.lng, userCoords.lat], [userCoords.lng, userCoords.lat]];
-        }
-        geojson = { type: 'Feature', geometry: { ...route.geometry, coordinates }, properties: { speed: 'NORMAL' } };
+        geojson = { type: 'Feature', geometry: route.geometry, properties: { speed: 'NORMAL' } };
       }
 
       const isSelected = idx === selectedRouteIndex;
@@ -221,7 +236,7 @@ export default function MapWidget({
         });
 
         map.on('click', clickLyr, () => {
-          if (onSelectRoute) onSelectRoute(idx);
+          if (onSelectRouteRef.current) onSelectRouteRef.current(idx);
         });
         map.on('mouseenter', clickLyr, () => {
           map.getCanvas().style.cursor = 'pointer';
@@ -345,7 +360,8 @@ export default function MapWidget({
     const createMarkerEl = (name, color, isMe, initialHeading) => {
       if (isMe) {
         if (isRideStarted) {
-          const size = 48;
+          // ── Active ride: highlighted glowing motorcycle with forward beam and direction ──
+          const size = 72;
           const wrap = document.createElement('div');
           wrap.className = 'gmaps-nav-chevron';
           wrap.style.cssText = `
@@ -353,52 +369,132 @@ export default function MapWidget({
             display:flex; align-items:center; justify-content:center;
           `;
           const heading = initialHeading || 0;
-          wrap.innerHTML = `
-            <svg width="${size}" height="${size}" viewBox="0 0 48 48" fill="none"
-              transform="rotate(${heading})"
-            >
+
+          // Outer pulsing glow beacon
+          const pulse = document.createElement('div');
+          pulse.style.cssText = `
+            position:absolute; width:68px; height:68px; border-radius:50%;
+            border:2.5px solid rgba(249,115,22,0.65);
+            background:radial-gradient(circle, rgba(249,115,22,0.25) 0%, rgba(249,115,22,0) 70%);
+            animation:pulse-ring 2s infinite; z-index:1; pointer-events:none;
+          `;
+          wrap.appendChild(pulse);
+
+          // Rotating vehicle and beam container
+          const rotator = document.createElement('div');
+          rotator.className = 'rydr-bike-rotator';
+          rotator.style.cssText = `
+            position:relative; width:56px; height:56px; display:flex; align-items:center; justify-content:center;
+            transform:rotate(${heading}deg); transform-origin:50% 50%;
+            transition:transform 0.2s cubic-bezier(0.2, 0, 0, 1); z-index:2; pointer-events:none;
+          `;
+          rotator.innerHTML = `
+            <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
               <defs>
-                <!-- Soft blur filter for the outer accuracy/direction halo -->
-                <filter id="glowBlur" x="-30%" y="-30%" width="160%" height="160%">
-                  <feGaussianBlur stdDeviation="4" result="blur" />
+                <radialGradient id="bikeHeadlight" cx="50%" cy="100%" r="100%">
+                  <stop offset="0%" stop-color="#FDBA74" stop-opacity="0.85"/>
+                  <stop offset="50%" stop-color="#F97316" stop-opacity="0.35"/>
+                  <stop offset="100%" stop-color="#F97316" stop-opacity="0"/>
+                </radialGradient>
+                <filter id="bikeShadow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#000000" flood-opacity="0.6"/>
                 </filter>
               </defs>
 
-              <!-- Google Maps Blue Halo (GPS Accuracy/Direction Glow) -->
-              <circle cx="24" cy="24" r="20" fill="rgba(59, 130, 246, 0.26)" style="filter: url(#glowBlur);" />
-              <circle cx="24" cy="24" r="16.5" fill="none" stroke="rgba(59, 130, 246, 0.45)" stroke-width="1.2" />
+              <!-- Forward Headlight Illumination Cone -->
+              <polygon points="28,24 13,3 43,3" fill="url(#bikeHeadlight)"/>
 
-              <!-- White Core Circle Base for Contrast & 3D shadow -->
-              <circle cx="24" cy="24" r="12.5" fill="#FFFFFF" style="filter: drop-shadow(0px 2.5px 4px rgba(0,0,0,0.35));" />
+              <!-- Outer Stealth Badge Disc with 3D Drop Shadow -->
+              <circle cx="28" cy="28" r="16" fill="#111216" stroke="#F97316" stroke-width="2.5" filter="url(#bikeShadow)"/>
+              <circle cx="28" cy="28" r="13" fill="none" stroke="#FFFFFF" stroke-width="1.2" stroke-opacity="0.9"/>
 
-              <!-- Royal Blue Navigation Chevron in Center (Larger Size) -->
-              <path d="M24 14.5 L17.5 30 L24 27.2 L30.5 30 Z" fill="#2563EB" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round" />
+              <!-- Forward Heading Arrow Tip -->
+              <path d="M28 13 L23.5 19 L28 17.5 L32.5 19 Z" fill="#F97316" stroke="#FFFFFF" stroke-width="1" stroke-linejoin="round"/>
+
+              <!-- Top-down Motorcycle Silhouette -->
+              <!-- Front tire -->
+              <rect x="26.5" y="19" width="3" height="6" rx="1.5" fill="#FFFFFF"/>
+              <!-- Handlebar with grip ends -->
+              <path d="M20 23.5 L36 23.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="19.5" cy="22.5" r="1.3" fill="#F97316"/>
+              <circle cx="36.5" cy="22.5" r="1.3" fill="#F97316"/>
+              <!-- Fuel tank -->
+              <path d="M24.5 24.5 Q28 22.5 31.5 24.5 L30.5 29.5 L25.5 29.5 Z" fill="#F97316"/>
+              <!-- Rider Helmet with visor reflection -->
+              <circle cx="28" cy="28.5" r="3.2" fill="#FFFFFF"/>
+              <path d="M26.5 27.5 Q28 26.3 29.5 27.5" stroke="#111216" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+              <!-- Seat -->
+              <path d="M25.5 31 L30.5 31 L30 34.5 L26 34.5 Z" fill="#94A3B8"/>
+              <!-- Rear wheel -->
+              <rect x="26.5" y="34" width="3" height="5.5" rx="1.5" fill="#FFFFFF"/>
             </svg>
           `;
+          wrap.appendChild(rotator);
+
+          // "YOU" pill label
+          const tag = document.createElement('div');
+          tag.style.cssText = `
+            position:absolute; bottom:-10px; left:50%; transform:translateX(-50%);
+            background:rgba(15,16,20,0.95); color:#FFFFFF;
+            font-family:'Inter',sans-serif; font-size:0.58rem; font-weight:800;
+            padding:2px 7px; border-radius:100px; white-space:nowrap;
+            border:1.5px solid #F97316; box-shadow:0 3px 10px rgba(0,0,0,0.5);
+            display:flex; align-items:center; gap:4px; pointer-events:none; z-index:3;
+          `;
+          tag.innerHTML = `
+            <span style="width:5px; height:5px; border-radius:50%; background:#F97316; box-shadow:0 0 6px #F97316;"></span>
+            YOU
+          `;
+          wrap.appendChild(tag);
           return wrap;
         } else {
-          const size = 20;
+          // ── Pre-ride: highlighted bike badge with YOU indicator ──
+          const size = 38;
           const wrap = document.createElement('div');
           wrap.className = 'gmaps-blue-dot';
           wrap.style.cssText = `
             position:relative; width:${size}px; height:${size}px; cursor:pointer;
             display:flex; align-items:center; justify-content:center;
           `;
+          const pulse = document.createElement('div');
+          pulse.style.cssText = `
+            position:absolute; width:58px; height:58px;
+            background:rgba(249,115,22,0.22); border-radius:50%;
+            border:1.8px solid rgba(249,115,22,0.35);
+            animation:pulse-ring 2s infinite; z-index:1; pointer-events:none;
+          `;
           const dot = document.createElement('div');
           dot.style.cssText = `
             width:${size}px; height:${size}px;
-            background:#3B82F6; border-radius:50%;
-            border:2.5px solid white;
-            box-shadow: 0 0 8px rgba(59,130,246,0.6); z-index:2;
+            background:linear-gradient(135deg, #F97316 0%, #EA580C 100%);
+            border-radius:50%;
+            border:3px solid white;
+            box-shadow: 0 0 16px rgba(249,115,22,0.75), 0 2px 8px rgba(0,0,0,0.4);
+            z-index:2;
+            display:flex; align-items:center; justify-content:center;
           `;
-          const pulse = document.createElement('div');
-          pulse.style.cssText = `
-            position:absolute; width:38px; height:38px;
-            background:rgba(59,130,246,0.25); border-radius:50%;
-            animation:pulse-ring 2s infinite; z-index:1; pointer-events:none;
+          // Crisp motorcycle icon
+          dot.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="5.5" cy="17.5" r="3.5"/>
+              <circle cx="18.5" cy="17.5" r="3.5"/>
+              <path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2"/>
+            </svg>
           `;
+          const tag = document.createElement('div');
+          tag.style.cssText = `
+            position:absolute; top:-20px; left:50%; transform:translateX(-50%);
+            background:rgba(15,16,20,0.92); color:#F97316;
+            font-family:'Inter',sans-serif; font-size:0.58rem; font-weight:800;
+            padding:2px 7px; border-radius:100px; white-space:nowrap;
+            border:1.2px solid #F97316; box-shadow:0 2px 6px rgba(0,0,0,0.4);
+            pointer-events:none; z-index:3;
+          `;
+          tag.textContent = 'YOU';
+
           wrap.appendChild(pulse);
           wrap.appendChild(dot);
+          wrap.appendChild(tag);
           return wrap;
         }
       }
@@ -431,13 +527,53 @@ export default function MapWidget({
 
     const activeRiderIds = new Set();
 
+    // 1. Current user marker (ALWAYS rendered from userCoords, even if Supabase cohort is not yet synced)
+    if (userCoords && userCoords.lat && userCoords.lng) {
+      const myId = currentRiderId || '__current_user__';
+      activeRiderIds.add(myId);
+
+      const expectedType = isRideStarted ? 'chevron' : 'dot';
+      let myMarker = markersRef.current[myId];
+      if (myMarker && myMarker.markerType !== expectedType) {
+        myMarker.remove();
+        delete markersRef.current[myId];
+        myMarker = null;
+      }
+
+      const currentHeading = userHeading || 0;
+
+      if (myMarker) {
+        myMarker.setLngLat([userCoords.lng, userCoords.lat]);
+        if (isRideStarted) {
+          const el = myMarker.getElement();
+          if (el) {
+            const rotEl = el.querySelector('.rydr-bike-rotator') || el.querySelector('svg');
+            if (rotEl) {
+              rotEl.style.transform = `rotate(${currentHeading}deg)`;
+            }
+          }
+        }
+      } else {
+        const el = createMarkerEl(userName || 'You', userColor || '#F97316', true, currentHeading);
+        const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+          .setLngLat([userCoords.lng, userCoords.lat])
+          .addTo(map);
+        marker.markerType = expectedType;
+        el.addEventListener('click', () => {
+          map.flyTo({ center: [userCoords.lng, userCoords.lat], zoom: 16 });
+          if (setIsMapCentered) setIsMapCentered(false);
+        });
+        markersRef.current[myId] = marker;
+      }
+    }
+
+    // 2. Cohort Pack Riders from Supabase
     riders.forEach(r => {
       if (!r.lat || !r.lng || !r.online) return;
+      if (currentRiderId && r.id === currentRiderId) return; // already rendered as myId above
       activeRiderIds.add(r.id);
 
-      const isMe = r.id === currentRiderId;
-      const expectedType = isMe ? (isRideStarted ? 'chevron' : 'dot') : 'standard';
-
+      const expectedType = 'standard';
       let existingMarker = markersRef.current[r.id];
       if (existingMarker && existingMarker.markerType !== expectedType) {
         existingMarker.remove();
@@ -445,19 +581,10 @@ export default function MapWidget({
         existingMarker = null;
       }
 
-      const currentHeading = r.heading || userHeading || 0;
-
       if (existingMarker) {
         existingMarker.setLngLat([r.lng, r.lat]);
-        if (isMe && isRideStarted) {
-          const el = existingMarker.getElement();
-          if (el) {
-            const svg = el.querySelector('svg');
-            if (svg) svg.setAttribute('transform', `rotate(${currentHeading})`);
-          }
-        }
       } else {
-        const el = createMarkerEl(r.name, r.color || '#6366F1', isMe, currentHeading);
+        const el = createMarkerEl(r.name, r.color || '#6366F1', false, 0);
         const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
           .setLngLat([r.lng, r.lat])
           .addTo(map);
@@ -476,7 +603,7 @@ export default function MapWidget({
         delete markersRef.current[id];
       }
     });
-  }, [riders, isRideStarted, currentRiderId, userHeading]);
+  }, [riders, isRideStarted, currentRiderId, userHeading, userCoords, userName, userColor]);
 
   // Destination Marker
   useEffect(() => {
