@@ -251,7 +251,7 @@ export default function OnboardingScreen({ onShowToast }) {
         });
 
       if (error) {
-        console.warn('Supabase profile save error:', error.message);
+        throw new Error(error.message);
       }
 
       // Save locally as cache fallback
@@ -270,22 +270,8 @@ export default function OnboardingScreen({ onShowToast }) {
         }
       }, 800);
     } catch (err) {
-      console.error(err);
-      onShowToast('Database connection unavailable, profile saved locally.', 'error');
-
-      // Fallback local save
-      localStorage.setItem('rydr_rider_profile', JSON.stringify(profile));
-      localStorage.setItem('rydr_rider_id', riderId);
-
-      const pendingRideId = sessionStorage.getItem('rydr_join_after_onboard');
-      setTimeout(() => {
-        if (pendingRideId) {
-          sessionStorage.removeItem('rydr_join_after_onboard');
-          navigate(`/join-ride?rideId=${pendingRideId}`);
-        } else {
-          navigate('/dashboard');
-        }
-      }, 800);
+      console.error('Registration save error:', err);
+      onShowToast(`Database save failed: ${err.message}`, 'error');
     } finally {
       setLoading(false);
     }
